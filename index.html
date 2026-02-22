@@ -12,39 +12,36 @@
             display: flex; justify-content: center; align-items: center; 
             height: 100vh; font-family: 'M PLUS Rounded 1c', sans-serif; 
             overflow: hidden; 
-            /* 文字選択・長押し・青い枠をすべて無効化 */
+            
+            /* ★追加：文字選択や長押しメニュー、タップ時の青い枠を完全に無効化 */
             -webkit-user-select: none; user-select: none;
             -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
             touch-action: none;
         }
 
+        /* レイアウトを一番調子が良かった「375x667の固定比率」に戻しました */
         #smartphone-frame { 
-            width: 100vw; height: 100vh; 
-            max-width: 600px; /* PC閲覧時のための最大幅、スマホ時は無視される */
-            max-height: 1000px;
+            width: 100%; max-width: 375px; 
+            height: 100%; max-height: 667px; 
             background: #1a1a1a; position: relative; overflow: hidden; 
-        }
-
-        /* 画面の向きが変わった時などのレスポンシブ対応用コンテナ */
-        #game-container {
-            width: 100%; height: 100%;
-            display: flex; justify-content: center; align-items: center;
+            border-radius: 30px; border: 4px solid #333;
         }
 
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; z-index: 10; opacity: 0; transition: opacity 0.3s; }
         .bg-gradient { background: radial-gradient(circle at top, #2c3e50, #000000); }
 
-        .game-card { width: 85%; background: rgba(255,255,255,0.1); border-radius: 20px; padding: 15px; margin: 10px 0; display: flex; align-items: center; cursor: pointer; border: 2px solid rgba(255,255,255,0.05); }
+        .game-card { width: 85%; background: rgba(255,255,255,0.1); border-radius: 20px; padding: 15px; margin: 10px 0; display: flex; align-items: center; cursor: pointer; transition: 0.2s; border: 2px solid rgba(255,255,255,0.05); }
+        .game-card:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .card-title { font-weight: 900; font-size: 1.1rem; color: #fffa65; }
         .card-desc { font-size: 0.75rem; color: white; opacity: 0.8; }
 
         .btn { background: #00cec9; color: #fff; border: none; padding: 15px 30px; border-radius: 50px; font-size: 1.2rem; font-weight: 900; cursor: pointer; box-shadow: 0 5px 0 #00b894; margin: 5px; }
-        #back-to-menu-btn { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 18px; border-radius: 15px; font-weight: 900; z-index: 100; cursor: pointer; font-size: 0.9rem; backdrop-filter: blur(5px); display: none; }
+        #back-to-menu-btn { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 15px; border-radius: 15px; font-weight: 900; z-index: 100; cursor: pointer; font-size: 0.8rem; backdrop-filter: blur(5px); display: none; }
 
         #ui-gameover { background: rgba(0,0,0,0.9); z-index: 120; color: white; display: none; flex-direction: column; justify-content: center; align-items: center; position: absolute; top:0; left:0; width:100%; height:100%; }
-        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 50; pointer-events: none; }
-        .hud-text { background: rgba(0,0,0,0.6); padding: 5px 25px; border-radius: 20px; color: #fffa65; font-weight: bold; border: 1px solid #fffa65; font-size: 1.1rem; }
+        #hud { position: absolute; top: 15px; width: 100%; display: flex; justify-content: center; z-index: 50; pointer-events: none; }
+        .hud-text { background: rgba(0,0,0,0.6); padding: 5px 20px; border-radius: 20px; color: #fffa65; font-weight: bold; border: 1px solid #fffa65; }
 
         #countdown-layer { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index: 110; display:none; flex-direction:column; justify-content:center; align-items:center; }
         #count-num { font-weight: 900; text-align: center; height: 120px; display: flex; align-items: center; justify-content: center; }
@@ -53,7 +50,7 @@
         @keyframes animePop { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.4); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
         .anime-fade { animation: animeFade 0.7s ease-out forwards; }
         @keyframes animeFade { 0% { opacity: 0; transform: scale(0.5); } 100% { opacity: 1; transform: scale(1); } }
-        .critical { color: #ff4757; font-weight: 900; font-size: 1.8rem; }
+        .critical { color: #ff4757; font-weight: 900; font-size: 1.6rem; }
     </style>
 </head>
 <body>
@@ -61,25 +58,25 @@
     <button id="back-to-menu-btn" onclick="GameEngine.changeScreen('screen-menu')">🏠 メニュー</button>
 
     <div id="screen-title" class="screen bg-gradient" style="display: flex; opacity: 1;">
-        <h1 style="font-size: 2.5rem; color: #fff; margin-top:100px; text-align:center;">バカゲー<br><span style="color:#fffa65">だいしゅうごう</span></h1>
-        <div style="font-size: 6rem; margin: 30px 0;">🤪</div>
-        <p style="color:white; opacity: 0.6; font-size: 1.2rem;">画面をタッチ！</p>
-        <div style="position:absolute; top:0; left:0; width:100%; height:100%;" onclick="GameEngine.changeScreen('screen-menu')"></div>
+        <h1 style="font-size: 2.2rem; color: #fff; margin-top:150px; text-align:center;">バカゲー<br><span style="color:#fffa65">だいしゅうごう</span></h1>
+        <div style="font-size: 5rem; margin: 20px 0;">🤪</div>
+        <p style="color:white; opacity: 0.6; font-size: 1.1rem; animation: pulse 1s infinite alternate;">画面をタッチ！</p>
+        <div style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer;" onclick="GameEngine.changeScreen('screen-menu')"></div>
     </div>
 
     <div id="screen-menu" class="screen bg-gradient">
         <h2 style="color:white; margin-top: 50px;">どれであそぶ？</h2>
         <div class="game-card" onclick="GameEngine.startGame('can')">
             <div style="font-size:2.5rem; margin-right:15px;">🚀</div>
-            <div class="card-info"><div class="card-title">うちゅうカンけり</div><div class="card-desc">頂点で花火ドカン！</div></div>
+            <div class="card-info"><div class="card-title">うちゅうカンけり</div><div class="card-desc">頂点で花火ドカン！うちゅうを目指せ！</div></div>
         </div>
         <div class="game-card" onclick="GameEngine.startGame('ito')">
             <div style="font-size:2.5rem; margin-right:15px;">🧶</div>
-            <div class="card-info"><div class="card-title">ギリギリ糸とおし</div><div class="card-desc">ヌルヌルしっぽを切らすな！</div></div>
+            <div class="card-info"><div class="card-title">ギリギリ糸とおし</div><div class="card-desc">ヌルヌル動くしっぽを切らすな！</div></div>
         </div>
         <div class="game-card" onclick="GameEngine.startGame('giri')">
             <div style="font-size:2.5rem; margin-right:15px;">🏃</div>
-            <div class="card-info"><div class="card-title">かわまでチキンレース</div><div class="card-desc">堤防ギリギリで止まれ！</div></div>
+            <div class="card-info"><div class="card-title">かわまでチキンレース</div><div class="card-desc">堤防から落ちるな！100点を目指せ！</div></div>
         </div>
         <div class="game-card" onclick="GameEngine.changeScreen('screen-title')" style="margin-top:20px; background:rgba(255,100,100,0.1);">
             <div style="font-size:2.5rem; margin-right:15px;">🏠</div>
@@ -89,251 +86,37 @@
 
     <div id="screen-game" class="screen" style="background: #000;">
         <div id="hud"><div id="ui-score" class="hud-text">スコア: 0</div></div>
-        <div id="countdown-layer"><div id="count-num">3</div><div id="count-help" style="color:white; font-size:1rem; margin-top:20px; text-align:center;"></div></div>
-        <canvas id="mainCanvas"></canvas>
+        <div id="countdown-layer">
+            <div id="count-num">3</div>
+            <div id="count-help" style="color:white; font-size:0.9rem; margin-top:20px; text-align:center; padding:0 40px; line-height:1.5;"></div>
+        </div>
+        <canvas id="mainCanvas" width="375" height="667"></canvas>
         <div id="ui-gameover">
             <div style="font-size: 1.5rem; color:#fffa65; font-weight:900; margin-bottom: 10px;">★ けっか発表 ★</div>
-            <p id="result-text" style="font-size: 1.2rem; text-align:center; padding:0 20px;"></p>
-            <button class="btn btn-retry" onclick="GameEngine.retry()">もういっかい！</button>
-            <button class="btn" style="background:#636e72;" onclick="GameEngine.changeScreen('screen-menu')">メニューへ</button>
+            <p id="result-text" style="font-size: 1.1rem; margin: 15px 0; text-align:center; line-height:1.6; padding:0 20px;"></p>
+            <button class="btn btn-retry" style="background:#ff4757; box-shadow:0 5px 0 #c0392b;" onclick="GameEngine.retry()">もういっかい！</button>
+            <button class="btn" style="background:#636e72; box-shadow:0 5px 0 #2d3436;" onclick="GameEngine.changeScreen('screen-menu')">メニューへ</button>
         </div>
     </div>
 </div>
 
 <script>
-const GameEngine = {
-    canvas: document.getElementById('mainCanvas'),
-    ctx: document.getElementById('mainCanvas').getContext('2d'),
-    animId: null, countdownTimer: null, currentGame: null, state: 'idle', particles: [],
-    
-    // 基本解像度（これに合わせてゲーム内座標を計算する）
-    baseWidth: 375, baseHeight: 667,
-
-    init: function() {
-        window.addEventListener('resize', () => this.resize());
-        this.resize();
-
-        this.canvas.addEventListener('pointerdown', (e) => {
-            e.preventDefault(); 
-            if(this.state === 'playing') this.currentGame.onPress();
-        });
-        this.canvas.addEventListener('pointerup', (e) => {
-            if(this.state === 'playing' && this.currentGame?.onRelease) this.currentGame.onRelease();
-        });
-        this.changeScreen('screen-title');
-    },
-
-    resize: function() {
-        const frame = document.getElementById('smartphone-frame');
-        const width = frame.clientWidth;
-        const height = frame.clientHeight;
-        
-        // Canvasの解像度を実際の画面サイズに合わせる
-        this.canvas.width = width;
-        this.canvas.height = height;
-        
-        // 拡大比率を保存
-        this.scale = height / this.baseHeight;
-        this.curWidth = width;
-        this.curHeight = height;
-    },
-
-    changeScreen: function(id) {
-        if(this.animId) cancelAnimationFrame(this.animId);
-        if(this.countdownTimer) clearInterval(this.countdownTimer);
-        document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; s.style.opacity = '0'; });
-        const next = document.getElementById(id);
-        next.style.display = 'flex';
-        setTimeout(() => next.style.opacity = '1', 50);
-        document.getElementById('back-to-menu-btn').style.display = (id === 'screen-game') ? 'block' : 'none';
-        this.state = (id === 'screen-game') ? 'playing' : 'idle';
-    },
-
-    startGame: function(mode) {
-        this.changeScreen('screen-game');
-        document.getElementById('ui-gameover').style.display = 'none';
-        this.particles = [];
-        if(mode === 'can') this.currentGame = new CanGame(this);
-        else if(mode === 'ito') this.currentGame = new ItoGame(this);
-        else if(mode === 'giri') this.currentGame = new GiriGame(this);
-        this.currentGame.init(); 
-        this.startCountdown();
-    },
-
-    startCountdown: function() {
-        this.state = 'countdown';
-        const layer = document.getElementById('countdown-layer');
-        const num = document.getElementById('count-num');
-        layer.style.display = 'flex';
-        document.getElementById('count-help').innerHTML = this.currentGame.help;
-        let count = 3;
-        const colors = ["#ff4757", "#ffa502", "#fffa65"];
-        const updateText = (val) => {
-            num.classList.remove('anime-pop', 'anime-fade');
-            void num.offsetWidth; 
-            if(val > 0) {
-                num.style.fontSize = '8rem'; num.style.color = colors[val-1]; num.innerText = val; num.classList.add('anime-pop');
-            } else {
-                num.style.fontSize = '4rem'; num.style.color = "#00cec9"; num.innerText = "スタート！"; num.classList.add('anime-fade');
-            }
-        };
-        updateText(count);
-        const cdLoop = () => { if(this.state !== 'countdown') return; this.ctx.clearRect(0,0,this.curWidth,this.curHeight); this.currentGame.draw(this.ctx); requestAnimationFrame(cdLoop); };
-        cdLoop();
-        this.countdownTimer = setInterval(() => {
-            count--;
-            if(count >= 0) updateText(count);
-            else { clearInterval(this.countdownTimer); layer.style.display = 'none'; this.state = 'playing'; this.mainLoop(); }
-        }, 900);
-    },
-
-    retry: function() { this.startGame(this.currentGame.mode); },
-
-    mainLoop: function() {
-        if(this.state !== 'playing' && this.state !== 'ending') return;
-        this.ctx.clearRect(0, 0, this.curWidth, this.curHeight);
-        this.currentGame.update();
-        this.currentGame.draw(this.ctx);
-        this.updateParticles();
-        this.animId = requestAnimationFrame(() => this.mainLoop());
-    },
-
-    spawn: function(x, y, color, count = 20, pwr = 1) {
-        for(let i=0; i<count; i++) {
-            this.particles.push({ x, y, vx: (Math.random()-0.5)*20*pwr*this.scale, vy: (Math.random()-0.5)*20*pwr*this.scale, life: 1.0, color, type: 'normal' });
-        }
-    },
-
-    spawnFirework: function(x, y) {
-        const colors = ["#ff4757", "#ffa502", "#fffa65", "#2ed573", "#1e90ff", "#a29bfe", "#ffffff"];
-        for(let i=0; i<100; i++) {
-            let angle = Math.random() * Math.PI * 2;
-            let speed = (Math.random() * 12 + 2) * this.scale;
-            this.particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1.0, color: colors[Math.floor(Math.random() * colors.length)], type: 'firework' });
-        }
-    },
-
-    updateParticles: function() {
-        for(let i = this.particles.length-1; i>=0; i--) {
-            let p = this.particles[i];
-            p.x += p.vx; p.y += p.vy;
-            if(p.type === 'firework') { p.vy += 0.15*this.scale; p.life -= 0.012; } else { p.life -= 0.035; }
-            this.ctx.save();
-            this.ctx.globalAlpha = Math.max(0, p.life);
-            this.ctx.fillStyle = p.color;
-            this.ctx.beginPath(); this.ctx.arc(p.x, p.y, (p.type==='firework'?3.5:2.5)*this.scale, 0, Math.PI*2); this.ctx.fill();
-            this.ctx.restore();
-            if(p.life <= 0) this.particles.splice(i, 1);
-        }
-    },
-
-    endGame: function(msg) { this.state = 'ending'; document.getElementById('result-text').innerHTML = msg; document.getElementById('ui-gameover').style.display = 'flex'; }
-};
-
 /**
- * 共通座標計算：baseY(元のy)を現在のスケールに合わせて返す
+ * ★追加：レトロ音源エンジン（Web Audio API）
+ * 画像や外部ファイルなしで「ピコピコ音」を作ります
  */
-function sy(val) { return val * GameEngine.scale; }
-function sx(val) { return val * (GameEngine.curWidth / 375); }
-
-/** 1. カンけり */
-class CanGame {
-    constructor(engine) { this.e = engine; this.mode = 'can'; this.help = "パワーと角度をきめて飛ばせ！"; }
-    init() {
-        this.can = { x: this.e.curWidth/2, y: sy(550), vx: 0, vy: 0, rot: 0, dead: false };
-        this.state = 'power'; this.gauge = 0; this.dir = 1; this.camY = 0; this.maxH = 0; this.wait = 0;
-        this.env = []; for(let i=0; i<50; i++) this.env.push({ x: Math.random()*(this.e.curWidth-60)+30, y: sy(i*-250 + 400), t: ["☁️","🎈","🦅","🚁","🚀","🛸","🪐"][Math.min(6, Math.floor(i/7))] });
-        document.getElementById('ui-score').innerText = `たかさ: 0m`; 
-    }
-    onPress() { if(this.state === 'power') { this.pwr = this.gauge; this.state = 'power_ok'; this.wait = 25; } else if(this.state === 'angle') { this.deg = this.gauge; this.state = 'angle_ok'; this.wait = 25; } }
-    update() {
-        if(this.state === 'power' || this.state === 'angle') { this.gauge += 3.5 * this.dir; if(this.gauge > 100 || this.gauge < 0) this.dir *= -1; }
-        else if(this.state.includes('_ok')) { if(--this.wait <= 0) { if(this.state === 'power_ok') { this.state = 'angle'; this.gauge = 0; } else { let rad = (this.deg * 0.9) * Math.PI / 180; this.can.vx = Math.cos(rad) * (this.pwr * 0.23 * this.e.scale); this.can.vy = -Math.sin(rad) * (this.pwr * 0.55 * this.e.scale); this.state = 'flying'; } } }
-        else if(this.state === 'flying' && !this.can.dead) {
-            this.can.vy += 0.25 * this.e.scale; this.can.x += this.can.vx; this.can.y += this.can.vy; this.can.rot += 0.2;
-            if(this.can.x < 20 || this.can.x > this.e.curWidth-20) { this.can.vx *= -0.7; this.can.x = this.can.x < 20 ? 20 : this.e.curWidth-20; }
-            this.camY = Math.min(this.camY, this.can.y - sy(300));
-            this.maxH = Math.max(this.maxH, Math.floor((sy(550) - this.can.y)/this.e.scale));
-            if(this.can.vy > 0) { this.can.dead = true; this.e.spawnFirework(this.can.x, this.can.y); this.e.endGame(`たかさ: <span class='critical'>${this.maxH}m</span><br>たまや〜！`); }
-        }
-        document.getElementById('ui-score').innerText = `たかさ: ${this.maxH}m`;
-    }
-    draw(ctx) {
-        let sky = Math.min(1, this.maxH / 8000); ctx.fillStyle = `rgb(${Math.floor(135*(1-sky))},${Math.floor(206*(1-sky))},${Math.floor(235*(1-sky))})`; ctx.fillRect(0,0,this.e.curWidth,this.e.curHeight);
-        ctx.save(); ctx.translate(0, -this.camY);
-        ctx.font = `${sy(30)}px Arial`; this.env.forEach(e => ctx.fillText(e.t, e.x, e.y));
-        ctx.fillStyle = '#2ecc71'; ctx.fillRect(-100, sy(580), this.e.curWidth+200, sy(500));
-        if(!this.can.dead) { ctx.save(); ctx.translate(this.can.x, this.can.y); ctx.rotate(this.can.rot); ctx.font = `${sy(50)}px Arial`; ctx.fillText('🥫', sy(-25), sy(25)); ctx.restore(); }
-        ctx.restore();
-        if(this.state.includes('power') || this.state.includes('angle')) {
-            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(sx(40), sy(160), sx(295), sy(90)); ctx.fillStyle = '#fff'; ctx.font = `bold ${sy(18)}px Arial`; ctx.fillText(this.state.includes('power')?"パワー":"かくど", sx(55), sy(190));
-            ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.fillRect(sx(50), sy(205), sx(275), sy(25)); ctx.fillStyle = this.state.includes('_ok')?"#fffa65":"#00cec9"; ctx.fillRect(sx(50), sy(205), (this.gauge/100)*sx(275), sy(25));
-        }
-    }
-}
-
-/** 2. 糸とおし */
-class ItoGame {
-    constructor(engine) { this.e = engine; this.mode = 'ito'; this.help = "おして上昇！<br>しっぽを切らすな！"; }
-    init() { this.y = this.e.curHeight/2; this.vy = 0; this.score = 0; this.walls = []; this.frame = 0; this.trail = []; this.isPress = false; this.dead = false; document.getElementById('ui-score').innerText = `スコア: 0`; }
-    onPress() { this.isPress = true; }
-    onRelease() { this.isPress = false; }
-    update() {
-        if(this.dead) return; this.vy += (this.isPress ? -0.8 : 0.45) * this.e.scale; this.vy *= 0.94; this.y += this.vy;
-        let spd = (4.2 + this.score * 0.16) * this.e.scale; let gap = sy(Math.max(80, 190 - this.score * 4.5));
-        this.trail.unshift({x: sx(100), y: this.y}); if(this.trail.length > 50) this.trail.pop(); this.trail.forEach(p => p.x -= spd);
-        this.e.spawn(sx(100), this.y, "#fffa65", 1, 0.2);
-        if(this.frame++ % Math.max(30, 80-this.score) === 0) this.walls.push({ x: this.e.curWidth, y: Math.random()*(this.e.curHeight-gap-sy(100))+sy(50), g: gap, scored: false });
-        this.walls.forEach(w => {
-            w.x -= spd; let r = sy(7);
-            if (w.x < sx(107) && w.x > sx(53) && (this.y < w.y+r || this.y > w.y+w.g-r)) { this.dead = true; this.e.spawn(sx(100), this.y, "#fffa65", 20, 1.5); this.e.endGame(`スコア: <span class='critical'>${this.score}点</span><br>ぶつかった！`); }
-            if(w.x < sx(80) && !w.scored && !this.dead) { w.scored = true; this.score++; }
-        });
-        if(!this.dead && (this.y < 0 || this.y > this.e.curHeight)) { this.dead = true; this.e.endGame("はみ出た！"); }
-        document.getElementById('ui-score').innerText = `スコア: ${this.score}`;
-    }
-    draw(ctx) {
-        ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0,0,this.e.curWidth,this.e.curHeight);
-        if(this.trail.length > 2) {
-            ctx.strokeStyle = '#fffa65'; ctx.lineWidth = sy(3); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(this.trail[0].x, this.trail[0].y);
-            for (let i = 1; i < this.trail.length - 2; i++) { const xc = (this.trail[i].x + this.trail[i + 1].x) / 2; const yc = (this.trail[i].y + this.trail[i + 1].y) / 2; ctx.quadraticCurveTo(this.trail[i].x, this.trail[i].y, xc, yc); }
-            ctx.stroke();
-        }
-        if(!this.dead) { ctx.fillStyle = '#fffa65'; ctx.beginPath(); ctx.arc(sx(100), this.y, sy(6), 0, Math.PI*2); ctx.fill(); }
-        this.walls.forEach(w => { ctx.fillStyle = '#ff4757'; ctx.fillRect(w.x, 0, sx(42), w.y); ctx.fillRect(w.x, w.y + w.g, sx(42), this.e.curHeight); });
-    }
-}
-
-/** 3. チキンレース */
-class GiriGame {
-    constructor(engine) { this.e = engine; this.mode = 'giri'; this.help = "おしてダッシュ！はなしてブレーキ！"; }
-    init() { this.x = sx(40); this.y = sy(500); this.vx = 0; this.vy = 0; this.rot = 0; this.state = 'ready'; document.getElementById('ui-score').innerText = `スピード: 0`; }
-    onPress() { if(this.state==='ready') this.state='go'; }
-    onRelease() { if(this.state==='go') this.state='brake'; }
-    update() {
-        if(this.state==='go') this.vx += 0.45 * this.e.scale; else if(this.state==='brake') { this.vx *= 0.88; if(this.vx < 0.2*this.e.scale) { this.vx = 0; this.judge(); } }
-        this.x += this.vx; if(this.x > sx(330) && this.state !== 'falling') this.state = 'falling';
-        if(this.state === 'falling') { this.vy += 0.7 * this.e.scale; this.y += this.vy; this.rot += 0.15; if(this.y > sy(580)) { this.e.spawn(this.x, sy(620), "#3498db", 40, 1.2); this.e.endGame("<span class='critical'>0点！</span><br>ドボーン！"); this.y = 2000; } }
-        document.getElementById('ui-score').innerText = `スピード: ${Math.floor(this.vx * 10 / this.e.scale)}`;
-    }
-    judge() {
-        let dist = (sx(330) - this.x) / this.e.scale; let point = Math.max(0, 100 - Math.floor(dist * 1.5));
-        let msgs = ["神降臨！！", "超おしい！", "達人！", "やるな！", "まあまあ", "安全第一かよｗ", "チキン！", "ヒヨコかｗ", "奇跡の0点ｗ"];
-        let msg = msgs[point>=100?0:point>=98?1:point>=90?2:point>=80?3:point>=60?4:point>=40?5:point>=20?6:point>0?7:8];
-        this.e.endGame(`スコア: <span class='critical'>${point}点</span><br>${msg}`);
-    }
-    draw(ctx) {
-        ctx.fillStyle = '#87ceeb'; ctx.fillRect(0,0,this.e.curWidth,this.e.curHeight);
-        ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(this.e.curWidth-sx(50), sy(80), sy(30), 0, Math.PI*2); ctx.fill(); 
-        ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.8; [ [80,120], [140,120], [280,170] ].forEach(p => { ctx.beginPath(); ctx.arc(sx(p[0]), sy(p[1]), sy(25), 0, Math.PI*2); ctx.fill(); }); ctx.globalAlpha = 1.0;
-        ctx.fillStyle = '#8b4513'; ctx.fillRect(0, sy(550), sx(330), sy(200)); 
-        ctx.fillStyle = '#87ceeb'; ctx.fillRect(sx(330), sy(550), sx(45), sy(70)); 
-        ctx.fillStyle = '#1a5276'; ctx.fillRect(sx(330), sy(620), this.e.curWidth, sy(200)); 
-        ctx.save(); ctx.translate(this.x, this.y + sy(45)); ctx.scale(-1, 1); ctx.rotate(-this.rot); ctx.font = `${sy(60)}px Arial`; ctx.fillText(this.state === 'falling' ? '😱' : '🏃', sx(-30), 0); ctx.restore();
-    }
-}
-
-GameEngine.init();
-</script>
-</body>
-</html>
+const AudioSys = {
+    ctx: null, bgmInterval: null,
+    init: function() {
+        if(this.ctx) return;
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+        this.playBGM(); // 初回タッチ時にBGM再生スタート
+    },
+    // 音を鳴らす基本関数
+    playTone: function(freq, type, dur, vol) {
+        if(!this.ctx) return;
+        let osc = this.ctx.createOscillator();
+        let gain = this.ctx.createGain();
+        osc.type = type; 
+        osc.frequency.setValueAt
