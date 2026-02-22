@@ -3,43 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>バカゲーコレクション Ver1.02</title>
+    <title>バカゲーコレクション Ver1.03</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap');
         
         body { 
             margin: 0; padding: 0; background: #121212; 
             display: flex; justify-content: center; align-items: center; 
-            height: 100vh; font-family: 'M PLUS Rounded 1c', sans-serif; 
+            height: 100vh; height: 100dvh; font-family: 'M PLUS Rounded 1c', sans-serif; 
             overflow: hidden; 
             
-            /* 青枠や長押し選択をブロック */
+            /* 青枠・長押し選択をブロック */
             -webkit-user-select: none; user-select: none;
             -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
-            /* ★修正：Safariのタップ無効化バグを回避しつつ、ダブルタップズームを防止 */
-            touch-action: manipulation; 
+            touch-action: manipulation; /* ダブルタップズームを防ぎつつタップは許可 */
         }
 
+        /* 基本は安全な固定サイズ（古い端末用） */
         #smartphone-frame { 
-            width: 100vw; 
-            height: 100vh; 
-            max-width: calc(100vh * (375 / 667));
-            max-height: calc(100vw * (667 / 375));
-            background: #1a1a1a; 
-            position: relative; 
-            overflow: hidden;
-            margin: auto;
-            border: 2px solid #333;
+            width: 100%; max-width: 375px; 
+            height: 100%; max-height: 667px; 
+            background: #1a1a1a; position: relative; overflow: hidden; 
+            margin: auto; border: 2px solid #333;
         }
 
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-            /* ★修正：ゲームのキャンバス上だけはスワイプ操作を完全に無効化 */
-            touch-action: none;
+        /* ★修正：バグの原因だったcalc()を廃止し、最新の安全な比率調整(aspect-ratio)を使用 */
+        @supports (aspect-ratio: 375/667) {
+            #smartphone-frame {
+                max-width: none; max-height: none;
+                height: 100%; width: auto;
+                aspect-ratio: 375 / 667;
+            }
+            @media (max-aspect-ratio: 375/667) {
+                #smartphone-frame { width: 100%; height: auto; }
+            }
         }
+
+        canvas { width: 100%; height: 100%; display: block; touch-action: none; }
 
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; z-index: 10; opacity: 0; transition: opacity 0.3s; }
         .bg-gradient { background: radial-gradient(circle at top, #2c3e50, #000000); }
@@ -70,7 +71,7 @@
 </head>
 <body>
 <div id="smartphone-frame">
-    <div id="version-tag">Ver1.02</div>
+    <div id="version-tag">Ver1.03</div>
 
     <button id="back-to-menu-btn" onclick="GameEngine.changeScreen('screen-menu')">🏠 メニュー</button>
 
@@ -78,7 +79,7 @@
         <h1 style="font-size: 2.2rem; color: #fff; margin-top:150px; text-align:center;">バカゲー<br><span style="color:#fffa65">だいしゅうごう</span></h1>
         <div style="font-size: 5rem; margin: 20px 0;">🤪</div>
         <p style="color:white; opacity: 0.6; font-size: 1.1rem; animation: pulse 1s infinite alternate;">画面をタッチ！</p>
-        <div style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer; z-index: 10;" onclick="GameEngine.changeScreen('screen-menu')"></div>
+        <div style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer; z-index:10;" onclick="GameEngine.changeScreen('screen-menu')"></div>
     </div>
 
     <div id="screen-menu" class="screen bg-gradient">
@@ -109,35 +110,4 @@
         </div>
         <canvas id="mainCanvas" width="375" height="667"></canvas>
         <div id="ui-gameover">
-            <div style="font-size: 1.5rem; color:#fffa65; font-weight:900; margin-bottom: 10px;">★ けっか発表 ★</div>
-            <p id="result-text" style="font-size: 1.1rem; margin: 15px 0; text-align:center; line-height:1.6; padding:0 20px;"></p>
-            <button class="btn btn-retry" style="background:#ff4757; box-shadow:0 5px 0 #c0392b;" onclick="GameEngine.retry()">もういっかい！</button>
-            <button class="btn" style="background:#636e72; box-shadow:0 5px 0 #2d3436;" onclick="GameEngine.changeScreen('screen-menu')">メニューへ</button>
-        </div>
-    </div>
-</div>
-
-<script>
-/** 音源システム */
-const AudioSys = {
-    ctx: null, bgmInterval: null,
-    init: function() {
-        if(this.ctx) return;
-        window.AudioContext = window.AudioContext || window.webkitAudioContext;
-        this.ctx = new AudioContext();
-        this.playBGM();
-    },
-    playTone: function(freq, type, dur, vol) {
-        if(!this.ctx || this.ctx.state !== 'running') return;
-        let osc = this.ctx.createOscillator(); let gain = this.ctx.createGain();
-        osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        gain.gain.setValueAtTime(vol, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        osc.start(); osc.stop(this.ctx.currentTime + dur);
-        return osc;
-    },
-    playBGM: function() {
-        const notes = [261.63, 329.63, 392.00, 329.63]; let idx = 0;
-        if(this.bgmInterval) clearInterval(this.bgmInterval);
-        this.bgmInterval = setInterval(() => {
-            if(this.ctx.state === 'running' && document.getElementById('screen
+            <div style="font-size: 1.5rem; color:#
