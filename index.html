@@ -1,30 +1,54 @@
+import portpicker
+import threading
+import http.server
+import socketserver
+from google.colab import output
+
+html_content = """
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>バカゲーコレクション Ver 1.10</title>
+    <title>バカゲーコレクション Ver 1.11</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap');
         
         body { 
             margin: 0; padding: 0; background: #121212; 
             display: flex; justify-content: center; align-items: center; 
-            height: 100vh; font-family: 'M PLUS Rounded 1c', sans-serif; 
+            height: 100vh; height: 100dvh;
+            font-family: 'M PLUS Rounded 1c', sans-serif; 
             overflow: hidden; 
-            /* ★追加：ブルー画面（選択）の防止 */
+            /* 文字選択・長押し防止 */
             -webkit-user-select: none; user-select: none;
             -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
+            touch-action: none;
         }
 
+        /* ★最適化：iPad等どんな画面でもアスペクト比を維持して最大化 */
         #smartphone-frame { 
-            width: 375px; height: 667px; 
-            background: #1a1a1a; position: relative; overflow: hidden; 
-            border-radius: 30px; border: 4px solid #333; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            position: relative;
+            width: 100%;
+            height: 100%;
+            aspect-ratio: 375 / 667;
+            background: #1a1a1a;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
         }
+
+        /* 画面が横長の時（iPadなど）は高さを基準に幅を絞る */
+        @media (min-aspect-ratio: 375/667) {
+            #smartphone-frame {
+                width: auto;
+                height: 100%;
+            }
+        }
+
+        canvas { width: 100%; height: 100%; display: block; }
 
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; z-index: 10; opacity: 0; transition: opacity 0.3s; }
         .bg-gradient { background: radial-gradient(circle at top, #2c3e50, #000000); }
@@ -35,11 +59,11 @@
         .card-desc { font-size: 0.75rem; color: white; opacity: 0.8; }
 
         .btn { background: #00cec9; color: #fff; border: none; padding: 15px 30px; border-radius: 50px; font-size: 1.2rem; font-weight: 900; cursor: pointer; box-shadow: 0 5px 0 #00b894; margin: 5px; }
-        #back-to-menu-btn { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 15px; border-radius: 15px; font-weight: 900; z-index: 100; cursor: pointer; font-size: 0.8rem; backdrop-filter: blur(5px); display: none; }
+        #back-to-menu-btn { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.2); color: white; border: none; padding: 10px 15px; border-radius: 15px; font-weight: 900; z-index: 100; cursor: pointer; font-size: 0.9rem; backdrop-filter: blur(5px); display: none; }
 
         #ui-gameover { background: rgba(0,0,0,0.9); z-index: 120; color: white; display: none; flex-direction: column; justify-content: center; align-items: center; position: absolute; top:0; left:0; width:100%; height:100%; }
-        #hud { position: absolute; top: 15px; width: 100%; display: flex; justify-content: center; z-index: 50; pointer-events: none; }
-        .hud-text { background: rgba(0,0,0,0.6); padding: 5px 20px; border-radius: 20px; color: #fffa65; font-weight: bold; border: 1px solid #fffa65; }
+        #hud { position: absolute; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 50; pointer-events: none; }
+        .hud-text { background: rgba(0,0,0,0.6); padding: 5px 20px; border-radius: 20px; color: #fffa65; font-weight: bold; border: 1px solid #fffa65; font-size: 1.1rem; }
 
         #countdown-layer { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index: 110; display:none; flex-direction:column; justify-content:center; align-items:center; }
         #count-num { font-weight: 900; text-align: center; height: 120px; display: flex; align-items: center; justify-content: center; }
@@ -48,21 +72,21 @@
         @keyframes animePop { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.4); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
         .anime-fade { animation: animeFade 0.7s ease-out forwards; }
         @keyframes animeFade { 0% { opacity: 0; transform: scale(0.5); } 100% { opacity: 1; transform: scale(1); } }
-        .critical { color: #ff4757; font-weight: 900; font-size: 1.6rem; }
+        .critical { color: #ff4757; font-weight: 900; font-size: 1.8rem; }
 
         #version-tag { position: absolute; top: 10px; right: 15px; color: rgba(255,255,255,0.3); font-size: 0.7rem; pointer-events: none; z-index: 100; }
     </style>
 </head>
 <body>
 <div id="smartphone-frame">
-    <div id="version-tag">Ver 1.10</div>
+    <div id="version-tag">Ver 1.11</div>
     <button id="back-to-menu-btn" onclick="GameEngine.changeScreen('screen-menu')">🏠 メニュー</button>
 
     <div id="screen-title" class="screen bg-gradient" style="display: flex; opacity: 1;">
-        <h1 style="font-size: 2.2rem; color: #fff; margin-top:150px; text-align:center;">バカゲー<br><span style="color:#fffa65">大集合！！</span></h1>
-        <div style="font-size: 5rem; margin: 20px 0;">🤪</div>
+        <h1 style="font-size: 2.2rem; color: #fff; margin-top:150px; text-align:center;">バカゲー<br><span style="color:#fffa65">だいしゅうごう</span></h1>
+        <div style="font-size: 5.5rem; margin: 20px 0;">🤪</div>
         <p style="color:white; opacity: 0.6; font-size: 1.1rem; animation: pulse 1s infinite alternate;">画面をタッチ！</p>
-        <div style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer;" onclick="GameEngine.handleTitleClick()"></div>
+        <div style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer; z-index:20;" onclick="GameEngine.handleTitleClick()"></div>
     </div>
 
     <div id="screen-menu" class="screen bg-gradient">
@@ -94,15 +118,15 @@
         <canvas id="mainCanvas" width="375" height="667"></canvas>
         <div id="ui-gameover">
             <div style="font-size: 1.5rem; color:#fffa65; font-weight:900; margin-bottom: 10px;">★ けっか発表 ★</div>
-            <p id="result-text" style="font-size: 1.1rem; margin: 15px 0; text-align:center; line-height:1.6; padding:0 20px;"></p>
-            <button class="btn btn-retry" style="background:#ff4757; box-shadow:0 5px 0 #c0392b;" onclick="GameEngine.retry()">もういっかい！</button>
-            <button class="btn" style="background:#636e72; box-shadow:0 5px 0 #2d3436;" onclick="GameEngine.changeScreen('screen-menu')">メニューへ</button>
+            <p id="result-text" style="font-size: 1.2rem; margin: 15px 0; text-align:center; line-height:1.6; padding:0 20px;"></p>
+            <button class="btn btn-retry" style="background:#ff4757;" onclick="GameEngine.retry()">もういっかい！</button>
+            <button class="btn" style="background:#636e72;" onclick="GameEngine.changeScreen('screen-menu')">メニューへ</button>
         </div>
     </div>
 </div>
 
 <script>
-/** * ★追加：音源システム
+/** * ★改善：音源システム（音が重ならないように管理）
  */
 const AudioSys = {
     ctx: null, bgmInterval: null,
@@ -123,8 +147,10 @@ const AudioSys = {
     },
     playBGM: function() {
         const notes = [261.63, 329.63, 392.00, 329.63]; let idx = 0;
-        setInterval(() => {
-            if(document.getElementById('screen-game').style.display !== 'none') {
+        if(this.bgmInterval) clearInterval(this.bgmInterval);
+        this.bgmInterval = setInterval(() => {
+            // ★改善：プレイ中のみ音を鳴らす
+            if(GameEngine.state === 'playing' || GameEngine.state === 'countdown') {
                 this.playTone(notes[idx]/2, 'triangle', 0.2, 0.03);
                 idx = (idx + 1) % notes.length;
             }
@@ -132,11 +158,11 @@ const AudioSys = {
     },
     se: function(name) {
         if(!this.ctx) return;
-        if(name === 'count') this.playTone(880, 'square', 0.1, 0.05);
-        if(name === 'go') this.playTone(1760, 'square', 0.4, 0.05);
+        if(name === 'count') this.playTone(880, 'square', 0.1, 0.04);
+        if(name === 'go') this.playTone(1760, 'square', 0.4, 0.04);
         if(name === 'kick') this.playTone(600, 'sawtooth', 0.2, 0.05);
         if(name === 'exp') this.playTone(100, 'square', 0.8, 0.1);
-        if(name === 'splash') this.playTone(200, 'sine', 0.5, 0.1);
+        if(name === 'splash') this.playTone(200, 'sine', 0.6, 0.15); // チキンの水没音
         if(name === 'hit') this.playTone(150, 'sawtooth', 0.2, 0.1);
     }
 };
@@ -147,25 +173,26 @@ const GameEngine = {
     animId: null, countdownTimer: null, currentGame: null, state: 'idle', particles: [],
 
     init: function() {
-        this.canvas.onpointerdown = (e) => {
+        // ★改善：どんなデバイスでもクリック位置がズレないよう、イベントリスナーを最適化
+        const handleDown = (e) => {
             e.preventDefault(); 
             if(this.state === 'playing') this.currentGame.onPress();
         };
-        this.canvas.onpointerup = (e) => {
+        this.canvas.addEventListener('pointerdown', handleDown);
+        this.canvas.addEventListener('pointerup', (e) => {
             if(this.state === 'playing' && this.currentGame?.onRelease) this.currentGame.onRelease();
-        };
+        });
         this.changeScreen('screen-title');
     },
 
     handleTitleClick: function() {
-        AudioSys.init(); // 音声を有効化
+        AudioSys.init();
         this.changeScreen('screen-menu');
     },
 
     changeScreen: function(id) {
         if(this.animId) cancelAnimationFrame(this.animId);
         if(this.countdownTimer) clearInterval(this.countdownTimer);
-        this.animId = null; this.countdownTimer = null;
         document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; s.style.opacity = '0'; });
         const next = document.getElementById(id);
         next.style.display = 'flex';
@@ -188,37 +215,32 @@ const GameEngine = {
     startCountdown: function() {
         this.state = 'countdown';
         const layer = document.getElementById('countdown-layer');
-        const num = document.getElementById('count-num');
         layer.style.display = 'flex';
         document.getElementById('count-help').innerHTML = this.currentGame.help;
         let count = 3;
-        const colors = ["#ff4757", "#ffa502", "#fffa65"];
         const updateText = (val) => {
+            const num = document.getElementById('count-num');
             num.classList.remove('anime-pop', 'anime-fade');
             void num.offsetWidth; 
             if(val > 0) {
-                num.style.fontSize = '8.5rem'; num.style.color = colors[val-1]; num.innerText = val; num.classList.add('anime-pop');
+                num.style.fontSize = '8.5rem'; num.innerText = val; num.classList.add('anime-pop');
                 AudioSys.se('count');
             } else {
-                num.style.fontSize = '4.5rem'; num.style.color = "#00cec9"; num.innerText = "スタート！"; num.classList.add('anime-fade');
+                num.style.fontSize = '4.5rem'; num.innerText = "GO!"; num.classList.add('anime-fade');
                 AudioSys.se('go');
             }
         };
         updateText(count);
         const cdLoop = () => {
             if(this.state !== 'countdown') return;
-            this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
-            this.currentGame.draw(this.ctx);
+            this.ctx.clearRect(0,0,375,667); this.currentGame.draw(this.ctx);
             requestAnimationFrame(cdLoop);
         };
         cdLoop();
         this.countdownTimer = setInterval(() => {
             count--;
-            if(count >= 0) { updateText(count); } 
-            else {
-                clearInterval(this.countdownTimer);
-                layer.style.display = 'none'; this.state = 'playing'; this.mainLoop();
-            }
+            if(count >= 0) updateText(count);
+            else { clearInterval(this.countdownTimer); layer.style.display = 'none'; this.state = 'playing'; this.mainLoop(); }
         }, 900);
     },
 
@@ -226,7 +248,7 @@ const GameEngine = {
 
     mainLoop: function() {
         if(this.state !== 'playing' && this.state !== 'ending') return;
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.clearRect(0, 0, 375, 667);
         this.currentGame.update();
         this.currentGame.draw(this.ctx);
         this.updateParticles();
@@ -234,31 +256,20 @@ const GameEngine = {
     },
 
     spawn: function(x, y, color, count = 20, pwr = 1) {
-        for(let i=0; i<count; i++) this.particles.push({ x, y, vx: (Math.random()-0.5)*20*pwr, vy: (Math.random()-0.5)*20*pwr, life: 1.0, color, type: 'normal' });
-    },
-
-    spawnFirework: function(x, y) {
-        const colors = ["#ff4757", "#ffa502", "#fffa65", "#2ed573", "#1e90ff", "#a29bfe", "#ffffff"];
-        for(let i=0; i<100; i++) {
-            let angle = Math.random() * Math.PI * 2; let speed = Math.random() * 12 + 2;
-            this.particles.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1.0, color: colors[Math.floor(Math.random() * colors.length)], type: 'firework' });
-        }
+        for(let i=0; i<count; i++) this.particles.push({ x, y, vx: (Math.random()-0.5)*20*pwr, vy: (Math.random()-0.5)*20*pwr, life: 1.0, color });
     },
 
     updateParticles: function() {
         for(let i = this.particles.length-1; i>=0; i--) {
-            let p = this.particles[i]; p.x += p.vx; p.y += p.vy;
-            if(p.type === 'firework') { p.vy += 0.15; p.life -= 0.012; } else { p.life -= 0.035; }
+            let p = this.particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.035;
             this.ctx.save(); this.ctx.globalAlpha = Math.max(0, p.life); this.ctx.fillStyle = p.color;
-            if(p.type === 'firework') { this.ctx.beginPath(); this.ctx.arc(p.x, p.y, 3.5, 0, Math.PI*2); this.ctx.fill(); } 
-            else { this.ctx.fillRect(p.x, p.y, 4, 4); }
-            this.ctx.restore();
+            this.ctx.fillRect(p.x, p.y, 4, 4); this.ctx.restore();
             if(p.life <= 0) this.particles.splice(i, 1);
         }
     },
 
     endGame: function(msg) {
-        this.state = 'ending';
+        this.state = 'ending'; // ★状態をendingに変更することで音が止まる
         document.getElementById('result-text').innerHTML = msg;
         document.getElementById('ui-gameover').style.display = 'flex';
     }
@@ -266,121 +277,131 @@ const GameEngine = {
 
 /** 1. うちゅうカンけり */
 class CanGame {
-    constructor(canvas) { this.w = canvas.width; this.h = canvas.height; this.mode = 'can'; this.help = "パワーと角度をきめて飛ばせ！"; }
+    constructor(canvas) { this.w = 375; this.h = 667; this.mode = 'can'; this.help = "パワーと角度をきめて飛ばせ！"; }
     init() {
-        this.can = { x: this.w/2, y: 550, vx: 0, vy: 0, rot: 0, dead: false };
-        this.state = 'power'; this.gauge = 0; this.dir = 1; this.camY = 0; this.maxH = 0; this.wait = 0;
-        this.env = []; for(let i=0; i<50; i++) this.env.push({ x: Math.random()*(this.w-60)+30, y: i*-250 + 400, t: ["☁️", "🎈", "🦅", "🚁", "🚀", "🛸", "🪐"][Math.min(6, Math.floor(i/7))] });
+        this.can = { x: 187, y: 550, vx: 0, vy: 0, rot: 0, dead: false };
+        this.state = 'power'; this.gauge = 0; this.dir = 1; this.camY = 0; this.maxH = 0;
+        this.env = []; for(let i=0; i<50; i++) this.env.push({ x: Math.random()*300+30, y: i*-250 + 400, t: ["☁️", "🚀", "🛸", "🪐"][Math.min(3, Math.floor(i/10))] });
         document.getElementById('ui-score').innerText = `たかさ: 0m`; 
     }
     onPress() {
-        AudioSys.se('count');
-        if(this.state === 'power') { this.pwr = this.gauge; this.state = 'power_ok'; this.wait = 30; }
-        else if(this.state === 'angle') { this.deg = this.gauge; this.state = 'angle_ok'; this.wait = 30; }
+        AudioSys.se('hit');
+        if(this.state === 'power') { this.pwr = this.gauge; this.state = 'angle'; this.gauge = 0; }
+        else if(this.state === 'angle') {
+            let rad = (this.gauge * 0.9) * Math.PI / 180;
+            this.can.vx = Math.cos(rad) * (this.pwr * 0.23); this.can.vy = -Math.sin(rad) * (this.pwr * 0.55);
+            this.state = 'flying'; AudioSys.se('kick');
+        }
     }
     update() {
         if(this.state === 'power' || this.state === 'angle') {
-            this.gauge += 3.2 * this.dir; if(this.gauge > 100 || this.gauge < 0) this.dir *= -1;
-        } else if(this.state.includes('_ok')) {
-            if(--this.wait <= 0) {
-                if(this.state === 'power_ok') { this.state = 'angle'; this.gauge = 0; }
-                else {
-                    let rad = (this.deg * 0.9) * Math.PI / 180;
-                    this.can.vx = Math.cos(rad) * (this.pwr * 0.23); this.can.vy = -Math.sin(rad) * (this.pwr * 0.55);
-                    this.state = 'flying'; AudioSys.se('kick');
-                }
-            }
+            this.gauge += 3.5 * this.dir; if(this.gauge > 100 || this.gauge < 0) this.dir *= -1;
         } else if(this.state === 'flying' && !this.can.dead) {
             this.can.vy += 0.25; this.can.x += this.can.vx; this.can.y += this.can.vy; this.can.rot += 0.2;
-            if(this.can.x < 20 || this.can.x > this.w-20) { this.can.vx *= -0.7; this.can.x = this.can.x < 20 ? 20 : this.w-20; }
             this.camY = Math.min(this.camY, this.can.y - 300);
             this.maxH = Math.max(this.maxH, Math.floor(550 - this.can.y));
             if(this.can.vy > 0) { 
-                this.can.dead = true; AudioSys.se('exp'); GameEngine.spawnFirework(this.can.x, this.can.y);
-                let msg = this.maxH > 2000 ? "銀河の果てまで飛ばしたぜ！" : "たまや〜！うちゅうの大花火！";
+                this.can.dead = true; AudioSys.se('exp'); GameEngine.spawn(this.can.x, this.can.y, "#fffa65", 50);
+                let msg = this.maxH > 2000 ? "宇宙到達！すごい！" : "たまや〜！ナイス花火！";
                 GameEngine.endGame(`たかさ: <span class='critical'>${this.maxH}m</span><br>${msg}`);
             }
         }
         document.getElementById('ui-score').innerText = `たかさ: ${this.maxH}m`;
     }
     draw(ctx) {
-        let sky = Math.min(1, this.maxH / 8000); ctx.fillStyle = `rgb(${Math.floor(135*(1-sky))},${Math.floor(206*(1-sky))},${Math.floor(235*(1-sky))})`; ctx.fillRect(0,0,this.w,this.h);
-        ctx.save(); ctx.translate(0, -this.camY); ctx.font = '30px Arial'; this.env.forEach(e => ctx.fillText(e.t, e.x, e.y)); ctx.fillStyle = '#2ecc71'; ctx.fillRect(-100, 580, this.w+200, 500);
-        if(!this.can.dead) { ctx.save(); ctx.translate(this.can.x, this.can.y); ctx.rotate(this.can.rot); ctx.font = '50px Arial'; ctx.fillText('🥫', -25, 25); ctx.restore(); }
+        let sky = Math.min(1, this.maxH / 8000); ctx.fillStyle = `rgb(${Math.floor(135*(1-sky))},${Math.floor(206*(1-sky))},${Math.floor(235*(1-sky))})`; ctx.fillRect(0,0,375,667);
+        ctx.save(); ctx.translate(0, -this.camY); ctx.font = '30px Arial'; this.env.forEach(e => ctx.fillText(e.t, e.x, e.y)); ctx.fillStyle = '#2ecc71'; ctx.fillRect(-100, 580, 500, 500);
+        if(!this.can.dead) { ctx.save(); ctx.translate(this.can.x, this.can.y); ctx.rotate(this.can.rot); ctx.fillText('🥫', -20, 20); ctx.restore(); }
         ctx.restore();
-        if(this.state.includes('power') || this.state.includes('angle')) {
-            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(40, 160, 295, 90); ctx.fillStyle = '#fff'; ctx.font = "bold 18px Arial"; ctx.fillText(this.state.includes('power') ? "パワー" : "かくど", 55, 190);
-            ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.fillRect(50, 205, 275, 25); ctx.fillStyle = this.state.includes('_ok') ? "#fffa65" : "#00cec9"; ctx.fillRect(50, 205, (this.gauge/100)*275, 25);
+        if(this.state === 'power' || this.state === 'angle') {
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(40, 160, 295, 90); ctx.fillStyle = '#fff'; ctx.font = "bold 18px Arial"; ctx.fillText(this.state==="power"?"パワー":"かくど", 55, 190);
+            ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.fillRect(50, 205, 275, 25); ctx.fillStyle = "#fffa65"; ctx.fillRect(50, 205, (this.gauge/100)*275, 25);
         }
     }
 }
 
 /** 2. ギリギリ糸とおし */
 class ItoGame {
-    constructor(canvas) { this.w = canvas.width; this.h = canvas.height; this.mode = 'ito'; this.help = "おして上昇！<br>しっぽを切らさずにすすもう！"; }
-    init() { this.y = 300; this.vy = 0; this.score = 0; this.walls = []; this.frame = 0; this.trail = []; this.isPress = false; this.dead = false; document.getElementById('ui-score').innerText = `スコア: 0`; }
-    onPress() { this.isPress = true; AudioSys.se('count'); }
+    constructor(canvas) { this.w = 375; this.h = 667; this.mode = 'ito'; this.help = "おして上昇！<br>しっぽを切らさずにすすもう！"; }
+    init() { this.y = 300; this.vy = 0; this.score = 0; this.walls = []; this.frame = 0; this.isPress = false; this.dead = false; document.getElementById('ui-score').innerText = `スコア: 0`; }
+    onPress() { this.isPress = true; AudioSys.se('hit'); }
     onRelease() { this.isPress = false; }
     update() {
         if(this.dead) return; this.vy += this.isPress ? -0.8 : 0.45; this.vy *= 0.94; this.y += this.vy;
         let speed = 4.2 + this.score * 0.16; let gap = Math.max(80, 190 - this.score * 4.5);
-        this.trail.unshift({x: 100, y: this.y}); if(this.trail.length > 50) this.trail.pop(); this.trail.forEach(p => p.x -= speed);
-        GameEngine.spawn(100, this.y, "#fffa65", 1, 0.2);
-        if(this.frame++ % Math.max(35, 85-this.score) === 0) this.walls.push({ x: this.w, y: Math.random()*(this.h-gap-100)+50, g: gap, scored: false });
+        if(this.frame++ % Math.max(35, 85-this.score) === 0) this.walls.push({ x: 375, y: Math.random()*(400)+50, g: gap, scored: false });
         this.walls.forEach(w => {
-            w.x -= speed; const r = 7;
-            if (w.x < 107 && w.x > 53 && (this.y < w.y+r || this.y > w.y+w.g-r)) {
-                this.dead = true; AudioSys.se('exp'); GameEngine.spawn(100, this.y, "#fffa65", 20, 1.5); 
-                let msg = this.score >= 30 ? "達人の域！" : "まだまだだね。";
-                GameEngine.endGame(`スコア: <span class='critical'>${this.score}点</span><br>${msg}`);
+            w.x -= speed;
+            if (w.x < 110 && w.x > 50 && (this.y < w.y || this.y > w.y+w.g)) {
+                this.dead = true; AudioSys.se('exp'); GameEngine.spawn(100, this.y, "#fffa65", 20); 
+                GameEngine.endGame(`スコア: <span class='critical'>${this.score}点</span><br>どんまい！`);
             }
-            if(w.x < 80 && !w.scored && !this.dead) { w.scored = true; this.score++; }
+            if(w.x < 50 && !w.scored && !this.dead) { w.scored = true; this.score++; }
         });
-        if(!this.dead && (this.y < 0 || this.y > this.h)) { this.dead = true; AudioSys.se('hit'); GameEngine.endGame("はみ出たぞ！ｗ"); }
-        if(!this.dead) document.getElementById('ui-score').innerText = `スコア: ${this.score}`;
+        if(!this.dead && (this.y < 0 || this.y > 667)) { this.dead = true; AudioSys.se('hit'); GameEngine.endGame("はみ出た！"); }
+        document.getElementById('ui-score').innerText = `スコア: ${this.score}`;
     }
     draw(ctx) {
-        ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0,0,this.w,this.h);
-        if(this.trail.length > 2) {
-            ctx.strokeStyle = '#fffa65'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(this.trail[0].x, this.trail[0].y);
-            for (let i = 1; i < this.trail.length - 2; i++) { const xc = (this.trail[i].x + this.trail[i + 1].x) / 2; const yc = (this.trail[i].y + this.trail[i + 1].y) / 2; ctx.quadraticCurveTo(this.trail[i].x, this.trail[i].y, xc, yc); }
-            ctx.quadraticCurveTo(this.trail[this.trail.length - 2].x, this.trail[this.trail.length - 2].y, this.trail[this.trail.length - 1].x, this.trail[this.trail.length - 1].y); ctx.stroke();
-        }
-        if(!this.dead) { ctx.fillStyle = '#fffa65'; ctx.beginPath(); ctx.arc(100, this.y, 6, 0, Math.PI*2); ctx.fill(); }
-        this.walls.forEach(w => { ctx.fillStyle = '#ff4757'; ctx.fillRect(w.x, 0, 42, w.y); ctx.fillRect(w.x, w.y + w.g, 42, this.h); });
+        ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0,0,375,667);
+        if(!this.dead) { ctx.fillStyle = '#fffa65'; ctx.beginPath(); ctx.arc(100, this.y, 8, 0, Math.PI*2); ctx.fill(); }
+        this.walls.forEach(w => { ctx.fillStyle = '#ff4757'; ctx.fillRect(w.x, 0, 40, w.y); ctx.fillRect(w.x, w.y + w.g, 40, 667); });
     }
 }
 
 /** 3. かわまでチキンレース */
 class GiriGame {
-    constructor(canvas) { this.w = canvas.width; this.h = canvas.height; this.mode = 'giri'; this.help = "おしてダッシュ！はなしてブレーキ！"; }
-    init() { this.x = 40; this.y = 500; this.vx = 0; this.vy = 0; this.rot = 0; this.state = 'ready'; document.getElementById('ui-score').innerText = `スピード: 0`; }
+    constructor(canvas) { this.w = 375; this.h = 667; this.mode = 'giri'; this.help = "おしてダッシュ！はなしてブレーキ！"; }
+    init() { this.x = 40; this.y = 500; this.vx = 0; this.vy = 0; this.state = 'ready'; document.getElementById('ui-score').innerText = `スピード: 0`; }
     onPress() { if(this.state==='ready') this.state='go'; }
     onRelease() { if(this.state==='go') this.state='brake'; }
     update() {
         if(this.state==='go') { this.vx += 0.45; }
         else if(this.state==='brake') { this.vx *= 0.88; if(this.vx < 0.2) { this.vx = 0; this.judge(); } }
-        this.x += this.vx; if(this.x > 330 && this.state !== 'falling') this.state = 'falling';
+        this.x += this.vx;
+        if(this.x > 330 && this.state !== 'falling' && this.state !== 'dead') this.state = 'falling';
         if(this.state === 'falling') {
-            this.vy += 0.7; this.y += this.vy; this.rot += 0.15;
-            if(this.y > 580) { AudioSys.se('splash'); GameEngine.spawn(this.x, 620, "#3498db", 40, 1.2); GameEngine.endGame("ドボーン！！ｗ"); this.y = 1000; }
+            this.vy += 0.8; this.y += this.vy;
+            if(this.y > 580) { 
+                // ★改善：1回だけ音を鳴らして状態を変える
+                this.state = 'dead';
+                AudioSys.se('splash'); 
+                GameEngine.spawn(this.x, 620, "#3498db", 40); 
+                GameEngine.endGame("<span class='critical'>0点！</span><br>ドボーン！！ｗ"); 
+            }
         }
         document.getElementById('ui-score').innerText = `スピード: ${Math.floor(this.vx * 10)}`;
     }
     judge() {
         let dist = 330 - this.x; let point = Math.max(0, 100 - Math.floor(dist * 1.5));
-        let msg = point >= 90 ? "神！鋼の心臓だ！" : point >= 50 ? "まあまあだな。" : "ビビりすぎｗ";
+        let msg = point >= 90 ? "神！鋼の心臓だ！" : point >= 50 ? "やるじゃん！" : "ビビりすぎｗ";
         GameEngine.endGame(`スコア: <span class='critical'>${point}点</span><br>${msg}`);
     }
     draw(ctx) {
-        ctx.fillStyle = '#87ceeb'; ctx.fillRect(0,0,this.w,this.h); 
-        ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(this.w-50, 80, 30, 0, Math.PI*2); ctx.fill(); 
-        ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.8; [ [80,120], [110,110], [140,120], [250,180], [280,170], [310,180] ].forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], 25, 0, Math.PI*2); ctx.fill(); }); ctx.globalAlpha = 1.0;
-        ctx.fillStyle = '#8b4513'; ctx.fillRect(0, 550, 330, 200); ctx.fillStyle = '#87ceeb'; ctx.fillRect(330, 550, 45, 70); ctx.fillStyle = '#1a5276'; ctx.fillRect(330, 620, this.w, 200); 
-        ctx.save(); ctx.translate(this.x, this.y + 45); ctx.scale(-1, 1); ctx.rotate(-this.rot); ctx.font = '60px Arial'; ctx.fillText(this.state === 'falling' ? '😱' : '🏃', -30, 0); ctx.restore();
+        ctx.fillStyle = '#87ceeb'; ctx.fillRect(0,0,375,667); 
+        ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(325, 80, 30, 0, Math.PI*2); ctx.fill(); 
+        ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.8;
+        [ [50,120], [150,110], [280,180] ].forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], 25, 0, Math.PI*2); ctx.fill(); }); 
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = '#8b4513'; ctx.fillRect(0, 550, 330, 200); ctx.fillStyle = '#1a5276'; ctx.fillRect(330, 550, 375, 200); 
+        ctx.font = '60px Arial'; ctx.fillText(this.state === 'falling' ? '😱' : '🏃', this.x, this.y + 40);
     }
 }
 GameEngine.init();
 </script>
 </body>
 </html>
+"""
+
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+port = portpicker.pick_unused_port()
+class QuietHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, format, *args): pass
+
+def start_server():
+    with socketserver.TCPServer(("", port), QuietHandler) as httpd:
+        httpd.serve_forever()
+
+threading.Thread(target=start_server, daemon=True).start()
+output.serve_kernel_port_as_window(port, path='/index.html')
