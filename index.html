@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>バカゲーコレクション Ver 1.12</title>
+    <title>バカゲーコレクション Ver 2.10</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap');
         
@@ -13,304 +13,381 @@
             height: 100vh; height: 100dvh;
             font-family: 'M PLUS Rounded 1c', sans-serif; 
             overflow: hidden; 
-            /* ブルー画面（選択）防止 */
             -webkit-user-select: none; user-select: none;
             -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
             touch-action: none;
         }
 
-        /* ★iPad・大画面対応：比率を維持したまま最大化 */
         #smartphone-frame { 
-            position: relative;
-            width: 100%;
-            height: 100%;
-            /* 画面サイズに合わせて自動で拡大縮小。計算式は1.10の座標系を壊さないように設定 */
-            max-width: calc(100vh * (375 / 667));
-            max-height: calc(100vw * (667 / 375));
-            aspect-ratio: 375 / 667;
-            background: #1a1a1a; 
-            overflow: hidden; 
-            border: 2px solid #333;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            margin: auto;
+            position: relative; width: 100%; height: 100%;
+            max-width: calc(100vh * (375 / 667)); max-height: calc(100vw * (667 / 375));
+            aspect-ratio: 375 / 667; background: #1a1a1a; overflow: hidden; 
+            border: 2px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.5); margin: auto;
         }
 
         canvas { width: 100%; height: 100%; display: block; }
-
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; z-index: 10; opacity: 0; transition: opacity 0.3s; }
         .bg-gradient { background: radial-gradient(circle at top, #2c3e50, #000000); }
-
-        .game-card { width: 85%; background: rgba(255,255,255,0.1); border-radius: 20px; padding: 15px; margin: 10px 0; display: flex; align-items: center; cursor: pointer; transition: 0.2s; border: 2px solid rgba(255,255,255,0.05); }
+        .game-card { width: 85%; background: rgba(255,255,255,0.1); border-radius: 20px; padding: 15px; margin: 8px 0; display: flex; align-items: center; cursor: pointer; transition: 0.2s; border: 2px solid rgba(255,255,255,0.05); }
         .game-card:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
         .card-title { font-weight: 900; font-size: 1.1rem; color: #fffa65; }
-        .card-desc { font-size: 0.75rem; color: white; opacity: 0.8; }
-
-        .btn { background: #00cec9; color: #fff; border: none; padding: 15px 30px; border-radius: 50px; font-size: 1.2rem; font-weight: 900; cursor: pointer; box-shadow: 0 5px 0 #00b894; margin: 5px; }
-        #back-to-menu-btn { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 15px; border-radius: 15px; font-weight: 900; z-index: 100; cursor: pointer; font-size: 0.8rem; backdrop-filter: blur(5px); display: none; }
-
-        #ui-gameover { background: rgba(0,0,0,0.9); z-index: 120; color: white; display: none; flex-direction: column; justify-content: center; align-items: center; position: absolute; top:0; left:0; width:100%; height:100%; }
+        .card-desc { font-size: 0.75rem; color: white; opacity: 0.6; }
+        .high-score-label { font-size: 0.75rem; color: #00cec9; font-weight: bold; margin-top: 4px; }
+        .btn { background: #00cec9; color: #fff; border: none; padding: 12px 25px; border-radius: 50px; font-size: 1.1rem; font-weight: 900; cursor: pointer; box-shadow: 0 5px 0 #00b894; margin: 5px; }
+        #back-to-menu-btn { position: absolute; top: 15px; left: 15px; background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 15px; border-radius: 15px; font-weight: 900; z-index: 100; cursor: pointer; font-size: 0.8rem; display: none; }
+        #ui-gameover { background: rgba(0,0,0,0.95); z-index: 120; color: white; display: none; flex-direction: column; justify-content: center; align-items: center; position: absolute; top:0; left:0; width:100%; height:100%; }
         #hud { position: absolute; top: 15px; width: 100%; display: flex; justify-content: center; z-index: 50; pointer-events: none; }
         .hud-text { background: rgba(0,0,0,0.6); padding: 5px 20px; border-radius: 20px; color: #fffa65; font-weight: bold; border: 1px solid #fffa65; }
-
+        #new-record-ui { display: none; flex-direction: column; align-items: center; background: #2d3436; padding: 20px; border-radius: 20px; border: 3px solid #fffa65; margin: 10px 0; width: 85%; box-sizing: border-box; }
+        #player-name-input { background: #fff; border: none; padding: 12px; border-radius: 10px; font-size: 1.2rem; width: 90%; text-align: center; margin: 15px 0; outline: none; color: #333; font-weight: bold; }
         #countdown-layer { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index: 110; display:none; flex-direction:column; justify-content:center; align-items:center; }
-        #count-num { font-weight: 900; text-align: center; height: 120px; display: flex; align-items: center; justify-content: center; }
-        
+        #count-num { font-weight: 900; text-align: center; height: 150px; display: flex; align-items: center; justify-content: center; text-shadow: 0 10px 0 rgba(0,0,0,0.3); }
+
+        /* アニメーション定義 */
         .anime-pop { animation: animePop 0.8s ease-out forwards; }
         @keyframes animePop { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.4); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
         .anime-fade { animation: animeFade 0.7s ease-out forwards; }
         @keyframes animeFade { 0% { opacity: 0; transform: scale(0.5); } 100% { opacity: 1; transform: scale(1); } }
-        .critical { color: #ff4757; font-weight: 900; font-size: 1.6rem; }
+        .critical { color: #ff4757; font-weight: 900; font-size: 1.8rem; }
         #version-tag { position: absolute; top: 10px; right: 15px; color: rgba(255,255,255,0.3); font-size: 0.7rem; pointer-events: none; z-index: 100; }
+
+        /* ★タイトル画面専用：登場＆ふわふわアニメーション */
+        @keyframes titleFlyInTop {
+            0% { transform: translateY(-300px); opacity: 0; }
+            60% { transform: translateY(20px); opacity: 1; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes titleFlyInBottom {
+            0% { transform: translateY(300px); opacity: 0; }
+            60% { transform: translateY(-20px); opacity: 1; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes titleFloating {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            33% { transform: translateY(-10px) rotate(2deg); }
+            66% { transform: translateY(5px) rotate(-2deg); }
+        }
+
+        /* アニメーション適用（画面が表示されている時のみ発動する仕組み） */
+        #screen-title[style*="display: flex"] #title-main {
+            animation: titleFlyInTop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, 
+                       titleFloating 4s ease-in-out infinite 0.8s;
+        }
+        #screen-title[style*="display: flex"] #title-emoji {
+            animation: titleFlyInBottom 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, 
+                       titleFloating 5s ease-in-out infinite 0.8s reverse;
+        }
     </style>
 </head>
 <body>
 <div id="smartphone-frame">
-    <div id="version-tag">Ver 1.12</div>
+    <div id="version-tag">Ver 2.10</div>
     <button id="back-to-menu-btn" onclick="GameEngine.changeScreen('screen-menu')">🏠 メニュー</button>
 
     <div id="screen-title" class="screen bg-gradient" style="display: flex; opacity: 1;">
-        <h1 style="font-size: 2.2rem; color: #fff; margin-top:150px; text-align:center;">バカゲー<br><span style="color:#fffa65">大集合！！</span></h1>
-        <div style="font-size: 5rem; margin: 20px 0;">🤪</div>
-        <p style="color:white; opacity: 0.6; font-size: 1.1rem; animation: pulse 1s infinite alternate;">画面をタッチ！</p>
+        <h1 id="title-main" style="font-size: 2.2rem; color: #fff; margin-top:150px; text-align:center;"></h1>
+        <div id="title-emoji" style="font-size: 5rem; margin: 20px 0;"></div>
+        <p id="title-sub" style="color:white; opacity: 0.6; font-size: 1.1rem;"></p>
         <div style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer; z-index:20;" onclick="GameEngine.handleTitleClick()"></div>
     </div>
 
     <div id="screen-menu" class="screen bg-gradient">
-        <h2 style="color:white; margin-top: 50px;">どれであそぶ？</h2>
-        <div class="game-card" onclick="GameEngine.startGame('can')">
-            <div style="font-size:2.5rem; margin-right:15px;">🚀</div>
-            <div class="card-info"><div class="card-title">うちゅうカンけり</div><div class="card-desc">頂点で花火ドカン！うちゅうを目指せ！</div></div>
-        </div>
-        <div class="game-card" onclick="GameEngine.startGame('ito')">
-            <div style="font-size:2.5rem; margin-right:15px;">🧶</div>
-            <div class="card-info"><div class="card-title">ギリギリ糸とおし</div><div class="card-desc">ヌルヌル動くしっぽを切らすな！</div></div>
-        </div>
-        <div class="game-card" onclick="GameEngine.startGame('giri')">
-            <div style="font-size:2.5rem; margin-right:15px;">🏃</div>
-            <div class="card-info"><div class="card-title">かわまでチキンレース</div><div class="card-desc">堤防から落ちるな！100点を目指せ！</div></div>
-        </div>
-        <div class="game-card" onclick="GameEngine.changeScreen('screen-title')" style="margin-top:20px; background:rgba(255,100,100,0.1);">
-            <div style="font-size:2.5rem; margin-right:15px;">🏠</div>
-            <div class="card-info"><div class="card-title" style="color:#ff7675;">タイトルにもどる</div></div>
-        </div>
+        <h2 id="menu-heading" style="color:white; margin-top: 50px;"></h2>
+        <div id="menu-list" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
     </div>
 
     <div id="screen-game" class="screen" style="background: #000;">
-        <div id="hud"><div id="ui-score" class="hud-text">スコア: 0</div></div>
+        <div id="hud"><div id="ui-score" class="hud-text"></div></div>
         <div id="countdown-layer">
-            <div id="count-num">3</div>
+            <div id="count-num"></div>
             <div id="count-help" style="color:white; font-size:0.9rem; margin-top:20px; text-align:center; padding:0 40px; line-height:1.5;"></div>
         </div>
         <canvas id="mainCanvas" width="375" height="667"></canvas>
         <div id="ui-gameover">
-            <div style="font-size: 1.5rem; color:#fffa65; font-weight:900; margin-bottom: 10px;">★ けっか発表 ★</div>
-            <p id="result-text" style="font-size: 1.1rem; margin: 15px 0; text-align:center; line-height:1.6; padding:0 20px;"></p>
-            <button class="btn btn-retry" style="background:#ff4757;" onclick="GameEngine.retry()">もういっかい！</button>
-            <button class="btn" style="background:#636e72;" onclick="GameEngine.changeScreen('screen-menu')">メニューへ</button>
+            <div id="gameover-title" style="font-size: 1.5rem; color:#fffa65; font-weight:900; margin-bottom: 10px;"></div>
+            <p id="result-text" style="font-size: 1.1rem; margin: 10px 0; text-align:center; line-height:1.6; padding:0 20px;"></p>
+            <div id="new-record-ui">
+                <div style="color:#fffa65; font-weight:900; font-size:1.2rem;">🏆 NEW RECORD!</div>
+                <input type="text" id="player-name-input" maxlength="8" placeholder="なまえをいれてね">
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" onclick="GameEngine.saveName()">きろくする</button>
+                    <button class="btn" style="background:#636e72; box-shadow:0 5px 0 #2d3436;" onclick="GameEngine.skipSave()">やめる</button>
+                </div>
+            </div>
+            <button id="btn-retry" class="btn" style="background:#ff4757; box-shadow:0 5px 0 #c0392b;" onclick="GameEngine.retry()">もういっかい</button>
+            <button id="btn-menu" class="btn" style="background:#636e72; box-shadow:0 5px 0 #2d3436;" onclick="GameEngine.changeScreen('screen-menu')">メニューへ</button>
         </div>
     </div>
 </div>
 
 <script>
-/** 音源システム */
-const AudioSys = {
-    ctx: null, bgmInterval: null,
-    init: function() {
-        if(this.ctx) return;
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        this.playBGM();
+/** * ★【設定エリア：PARAMETERS】
+ */
+const CONFIG = {
+    GENERAL: {
+        TITLE_MAIN: "バカゲー<br><span style='color:#fffa65'>だいしゅうごう</span>",
+        TITLE_SUB: "画面をタッチ！", TITLE_EMOJI: "🤪", MENU_HEADING: "どれであそぶ？", GAMEOVER_TITLE: "★ けっか発表 ★",
+        COUNT_COLORS: ["#ff4757", "#ffa502", "#fffa65"], GO_COLOR: "#00cec9"
     },
+    CAN: {
+        ID: "can", TITLE: "うちゅうカンけり", UNIT: "m", EMOJI: "🚀",
+        DESC: "うちゅうを目指せ！", HELP: "パワーと角度をきめて飛ばせ！",
+        GUAGE_SPEED: 3.2, GRAVITY: 0.25, PWR_X_MULT: 0.23, PWR_Y_MULT: 0.55,
+        MESSAGES: [{ threshold: 5000, text: "神レベル！銀河の果てまで行ったぜ！" }, { threshold: 2000, text: "たまや〜！ナイス花火！" }, { threshold: 0, text: "たまや〜！もっと飛ばそう！" }]
+    },
+    ITO: {
+        ID: "ito", TITLE: "ギリギリ糸とおし", UNIT: "点", EMOJI: "🧶",
+        DESC: "しっぽを切らすな！", HELP: "おして上昇！しっぽを切らさずにすすもう！",
+        FALL_SPEED: 0.45, JUMP_POWER: -0.8, BASE_SPEED: 4.2, ACCEL: 0.16, GAP_SIZE: 80,
+        MESSAGES: [{ threshold: 30, text: "達人の域！すごい集中力！" }, { threshold: 10, text: "やるじゃん！その調子！" }, { threshold: 0, text: "どんまい！ｗ 集中していこう！" }]
+    },
+    GIRI: {
+        ID: "giri", TITLE: "かわまでチキンレース", UNIT: "点", EMOJI: "🏃",
+        DESC: "堤防から落ちるな！", HELP: "おしてダッシュ！はなしてブレーキ！",
+        DASH_POWER: 0.45, BRAKE_DRAG: 0.88, RIVER_POS: 330,
+        MESSAGES: [{ threshold: 95, text: "神降臨！！心臓は鋼鉄製か！？" }, { threshold: 60, text: "やるじゃん！ギリギリを攻めたな！" }, { threshold: 1, text: "ビビりすぎｗ もっと攻めろよ！" }, { threshold: 0, text: "ドボーン！！ｗ およぎに来たの？ｗ" }]
+    }
+};
+
+const ScoreSys = {
+    data: { can: {score:0, name:"-"}, ito: {score:0, name:"-"}, giri: {score:0, name:"-"} },
+    init: function() {
+        const saved = localStorage.getItem('bakage_v2_10_scores');
+        if(saved) this.data = JSON.parse(saved);
+        this.display();
+    },
+    isRecord: function(id, s) { return s > this.data[id].score; },
+    save: function(id, s, n) {
+        this.data[id] = { score: s, name: n || "ななし" };
+        localStorage.setItem('bakage_v2_10_scores', JSON.stringify(this.data));
+        this.display();
+    },
+    display: function() {
+        for(let id in this.data) {
+            const el = document.getElementById('score-' + id);
+            const unit = CONFIG[id.toUpperCase()].UNIT;
+            if(el) el.innerText = `記録: ${this.data[id].score}${unit} (${this.data[id].name})`;
+        }
+    }
+};
+
+const AudioSys = {
+    ctx: null,
+    init: function() { if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
     playTone: function(freq, type, dur, vol) {
-        if(!this.ctx || this.ctx.state !== 'running') this.ctx.resume();
+        if(!this.ctx) return; if(this.ctx.state !== 'running') this.ctx.resume();
         const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
         osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
         gain.gain.setValueAtTime(vol, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        osc.start(); osc.stop(this.ctx.currentTime + dur);
-    },
-    playBGM: function() {
-        const notes = [261.63, 329.63, 392.00, 329.63]; let idx = 0;
-        setInterval(() => {
-            if(document.getElementById('screen-game').style.display !== 'none') {
-                this.playTone(notes[idx]/2, 'triangle', 0.2, 0.03); idx = (idx + 1) % notes.length;
-            }
-        }, 400);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + dur);
     },
     se: function(name) {
-        if(!this.ctx) return;
-        if(name === 'count') this.playTone(880, 'square', 0.1, 0.05);
-        if(name === 'go') this.playTone(1760, 'square', 0.4, 0.05);
-        if(name === 'kick') this.playTone(600, 'sawtooth', 0.2, 0.05);
-        if(name === 'exp') this.playTone(100, 'square', 0.8, 0.1);
-        if(name === 'splash') this.playTone(200, 'sine', 0.5, 0.1);
-        if(name === 'hit') this.playTone(150, 'sawtooth', 0.2, 0.1);
+        if(name === 'count') this.playTone(880, 'square', 0.1, 0.05); if(name === 'go') this.playTone(1760, 'square', 0.4, 0.05);
+        if(name === 'kick') this.playTone(600, 'sawtooth', 0.2, 0.05); if(name === 'exp') this.playTone(100, 'square', 0.8, 0.1);
+        if(name === 'splash') this.playTone(200, 'sine', 0.5, 0.1); if(name === 'hit') this.playTone(150, 'sawtooth', 0.1, 0.05);
     }
 };
 
 const GameEngine = {
-    canvas: document.getElementById('mainCanvas'),
-    ctx: document.getElementById('mainCanvas').getContext('2d'),
-    animId: null, countdownTimer: null, currentGame: null, state: 'idle', particles: [],
-
+    canvas: document.getElementById('mainCanvas'), ctx: document.getElementById('mainCanvas').getContext('2d'),
+    state: 'idle', currentGame: null, particles: [], lastScore: 0, currentId: "",
     init: function() {
+        document.getElementById('title-main').innerHTML = CONFIG.GENERAL.TITLE_MAIN;
+        document.getElementById('title-sub').innerText = CONFIG.GENERAL.TITLE_SUB;
+        document.getElementById('title-emoji').innerText = CONFIG.GENERAL.TITLE_EMOJI;
+        document.getElementById('menu-heading').innerText = CONFIG.GENERAL.MENU_HEADING;
+        document.getElementById('gameover-title').innerText = CONFIG.GENERAL.GAMEOVER_TITLE;
+        const list = document.getElementById('menu-list');
+        ['can', 'ito', 'giri'].forEach(id => {
+            const conf = CONFIG[id.toUpperCase()];
+            const card = document.createElement('div'); card.className = 'game-card';
+            card.onclick = () => this.startGame(id);
+            card.innerHTML = `<div style="font-size:2.5rem; margin-right:15px;">${conf.EMOJI}</div>
+                <div class="card-info"><div class="card-title">${conf.TITLE}</div>
+                <div class="card-desc">${conf.DESC}</div><div id="score-${id}" class="high-score-label"></div></div>`;
+            list.appendChild(card);
+        });
+        const backBtn = document.createElement('div');
+        backBtn.className = 'game-card'; backBtn.style.marginTop = '20px'; backBtn.style.background = 'rgba(255,100,100,0.1)';
+        backBtn.onclick = () => this.changeScreen('screen-title');
+        backBtn.innerHTML = `<div style="font-size:2.5rem; margin-right:15px;">🏠</div>
+            <div class="card-info"><div class="card-title" style="color:#ff7675;">タイトルにもどる</div></div>`;
+        list.appendChild(backBtn);
+        ScoreSys.init();
         this.canvas.onpointerdown = (e) => { e.preventDefault(); if(this.state === 'playing') this.currentGame.onPress(); };
         this.canvas.onpointerup = (e) => { if(this.state === 'playing' && this.currentGame?.onRelease) this.currentGame.onRelease(); };
         this.changeScreen('screen-title');
     },
-
-    handleTitleClick: function() { AudioSys.init(); this.changeScreen('screen-menu'); },
-
     changeScreen: function(id) {
-        if(this.animId) cancelAnimationFrame(this.animId);
-        if(this.countdownTimer) clearInterval(this.countdownTimer);
-        this.animId = null; this.countdownTimer = null;
+        if(this.timer) clearInterval(this.timer);
         document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; s.style.opacity = '0'; });
-        const next = document.getElementById(id); next.style.display = 'flex'; setTimeout(() => next.style.opacity = '1', 50);
+        const next = document.getElementById(id); 
+        next.style.display = 'flex'; 
+        // アニメーションを再発火させるための微調整
+        if(id === 'screen-title') {
+            const title = document.getElementById('title-main');
+            const emoji = document.getElementById('title-emoji');
+            title.style.animation = 'none'; emoji.style.animation = 'none';
+            void title.offsetWidth; void emoji.offsetWidth; // リフロー
+            title.style.animation = ''; emoji.style.animation = '';
+        }
+        setTimeout(() => next.style.opacity = '1', 50);
         document.getElementById('back-to-menu-btn').style.display = (id === 'screen-game') ? 'block' : 'none';
         this.state = (id === 'screen-game') ? 'playing' : 'idle';
     },
-
-    startGame: function(mode) {
-        this.changeScreen('screen-game'); document.getElementById('ui-gameover').style.display = 'none'; this.particles = [];
-        if(mode === 'can') this.currentGame = new CanGame(this.canvas);
-        else if(mode === 'ito') this.currentGame = new ItoGame(this.canvas);
-        else if(mode === 'giri') this.currentGame = new GiriGame(this.canvas);
+    handleTitleClick: function() { AudioSys.init(); this.changeScreen('screen-menu'); },
+    startGame: function(id) {
+        this.currentId = id; this.changeScreen('screen-game');
+        document.getElementById('ui-gameover').style.display = 'none'; this.particles = [];
+        if(id === 'can') this.currentGame = new CanGame(); else if(id === 'ito') this.currentGame = new ItoGame(); else if(id === 'giri') this.currentGame = new GiriGame();
         this.currentGame.init(); this.startCountdown();
     },
-
     startCountdown: function() {
         this.state = 'countdown';
-        const layer = document.getElementById('countdown-layer'); const num = document.getElementById('count-num');
-        layer.style.display = 'flex'; document.getElementById('count-help').innerHTML = this.currentGame.help;
-        let count = 3; const colors = ["#ff4757", "#ffa502", "#fffa65"];
-        const updateText = (val) => {
-            num.classList.remove('anime-pop', 'anime-fade'); void num.offsetWidth; 
-            if(val > 0) { num.style.fontSize = '8.5rem'; num.style.color = colors[val-1]; num.innerText = val; num.classList.add('anime-pop'); AudioSys.se('count'); } 
-            else { num.style.fontSize = '4.5rem'; num.style.color = "#00cec9"; num.innerText = "GO!"; num.classList.add('anime-fade'); AudioSys.se('go'); }
+        const layer = document.getElementById('countdown-layer'); layer.style.display = 'flex';
+        document.getElementById('count-help').innerHTML = this.currentGame.help;
+        let c = 3;
+        const update = (v) => {
+            const num = document.getElementById('count-num'); num.classList.remove('anime-pop', 'anime-fade'); void num.offsetWidth;
+            if(v > 0) { num.style.fontSize = '8.5rem'; num.style.color = CONFIG.GENERAL.COUNT_COLORS[v-1]; num.innerText = v; num.classList.add('anime-pop'); AudioSys.se('count'); }
+            else { num.style.fontSize = '4.5rem'; num.style.color = CONFIG.GENERAL.GO_COLOR; num.innerText = "GO!"; num.classList.add('anime-fade'); AudioSys.se('go'); }
         };
-        updateText(count);
-        const cdLoop = () => { if(this.state !== 'countdown') return; this.ctx.clearRect(0,0,375,667); this.currentGame.draw(this.ctx); requestAnimationFrame(cdLoop); };
-        cdLoop();
-        this.countdownTimer = setInterval(() => { count--; if(count >= 0) updateText(count); else { clearInterval(this.countdownTimer); layer.style.display = 'none'; this.state = 'playing'; this.mainLoop(); } }, 900);
+        update(c);
+        const loop = () => { if(this.state !== 'countdown') return; this.ctx.clearRect(0,0,375,667); this.currentGame.draw(this.ctx); requestAnimationFrame(loop); };
+        loop();
+        this.timer = setInterval(() => { c--; if(c >= 0) update(c); else { clearInterval(this.timer); layer.style.display = 'none'; this.state = 'playing'; this.mainLoop(); } }, 900);
     },
-
-    retry: function() { this.startGame(this.currentGame.mode); },
-
     mainLoop: function() {
         if(this.state !== 'playing' && this.state !== 'ending') return;
         this.ctx.clearRect(0, 0, 375, 667); this.currentGame.update(); this.currentGame.draw(this.ctx); this.updateParticles();
-        this.animId = requestAnimationFrame(() => this.mainLoop());
+        requestAnimationFrame(() => this.mainLoop());
     },
-
-    spawn: function(x, y, color, count = 20, pwr = 1) { for(let i=0; i<count; i++) this.particles.push({ x, y, vx: (Math.random()-0.5)*20*pwr, vy: (Math.random()-0.5)*20*pwr, life: 1.0, color, type: 'normal' }); },
+    spawn: function(x, y, color, count = 20, pwr = 1) { for(let i=0; i<count; i++) this.particles.push({ x, y, vx: (Math.random()-0.5)*15*pwr, vy: (Math.random()-0.5)*15*pwr, life: 1.0, color }); },
     spawnFirework: function(x, y) {
-        const colors = ["#ff4757", "#ffa502", "#fffa65", "#2ed573", "#1e90ff", "#a29bfe", "#ffffff"];
+        const colors = ["#ff4757", "#ffa502", "#fffa65", "#2ed573", "#1e90ff", "#ffffff"];
         for(let i=0; i<100; i++) {
             let angle = Math.random() * Math.PI * 2; let speed = Math.random() * 12 + 2;
-            this.particles.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1.0, color: colors[Math.floor(Math.random() * colors.length)], type: 'firework' });
+            this.particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1.0, color: colors[Math.floor(Math.random() * colors.length)], type: 'firework' });
         }
     },
     updateParticles: function() {
         for(let i = this.particles.length-1; i>=0; i--) {
-            let p = this.particles[i]; p.x += p.vx; p.y += p.vy;
+            let p = this.particles[i]; p.x += p.vx; p.y += p.vy; 
             if(p.type === 'firework') { p.vy += 0.15; p.life -= 0.012; } else { p.life -= 0.035; }
             this.ctx.save(); this.ctx.globalAlpha = Math.max(0, p.life); this.ctx.fillStyle = p.color;
             if(p.type === 'firework') { this.ctx.beginPath(); this.ctx.arc(p.x, p.y, 3.5, 0, Math.PI*2); this.ctx.fill(); } else { this.ctx.fillRect(p.x, p.y, 4, 4); }
             this.ctx.restore(); if(p.life <= 0) this.particles.splice(i, 1);
         }
     },
-    endGame: function(msg) { this.state = 'ending'; document.getElementById('result-text').innerHTML = msg; document.getElementById('ui-gameover').style.display = 'flex'; }
+    endGame: function(score, customMsg = null) {
+        this.state = 'ending'; this.lastScore = score;
+        const conf = CONFIG[this.currentId.toUpperCase()];
+        let msgText = customMsg || conf.MESSAGES.find(m => score >= m.threshold).text;
+        const label = this.currentId === 'can' ? 'たかさ' : 'スコア';
+        document.getElementById('result-text').innerHTML = `${label}: <span class='critical'>${score}${conf.UNIT}</span><br>${msgText}`;
+        if(ScoreSys.isRecord(this.currentId, score)) { document.getElementById('new-record-ui').style.display = 'flex'; document.getElementById('btn-retry').style.display = 'none'; document.getElementById('btn-menu').style.display = 'none'; }
+        else { this.skipSave(); }
+        document.getElementById('ui-gameover').style.display = 'flex';
+    },
+    saveName: function() { ScoreSys.save(this.currentId, this.lastScore, document.getElementById('player-name-input').value); this.skipSave(); },
+    skipSave: function() { document.getElementById('new-record-ui').style.display = 'none'; document.getElementById('btn-retry').style.display = 'block'; document.getElementById('btn-menu').style.display = 'block'; },
+    retry: function() { this.startGame(this.currentId); }
 };
 
 /** 1. うちゅうカンけり */
 class CanGame {
-    constructor(canvas) { this.w = 375; this.h = 667; this.mode = 'can'; this.help = "パワーと角度をきめて飛ばせ！"; }
+    constructor() { this.c = CONFIG.CAN; this.help = CONFIG.CAN.HELP; }
     init() {
         this.can = { x: 187, y: 550, vx: 0, vy: 0, rot: 0, dead: false }; this.state = 'power'; this.gauge = 0; this.dir = 1; this.camY = 0; this.maxH = 0;
         this.env = []; for(let i=0; i<50; i++) this.env.push({ x: Math.random()*315+30, y: i*-250 + 400, t: ["☁️", "🎈", "🦅", "🚁", "🚀", "🛸", "🪐"][Math.min(6, Math.floor(i/7))] });
         document.getElementById('ui-score').innerText = `たかさ: 0m`; 
     }
-    onPress() { AudioSys.se('hit'); if(this.state === 'power') { this.pwr = this.gauge; this.state = 'power_ok'; this.wait = 30; } else if(this.state === 'angle') { this.deg = this.gauge; this.state = 'angle_ok'; this.wait = 30; } }
+    onPress() { AudioSys.se('hit'); if(this.state === 'power') { this.pwr = this.gauge; this.state = 'power_ok'; this.wait = 25; } else if(this.state === 'angle') { this.deg = this.gauge; this.state = 'angle_ok'; this.wait = 25; } }
     update() {
-        if(this.state === 'power' || this.state === 'angle') { this.gauge += 3.2 * this.dir; if(this.gauge > 100 || this.gauge < 0) this.dir *= -1; }
-        else if(this.state.includes('_ok')) { if(--this.wait <= 0) { if(this.state === 'power_ok') { this.state = 'angle'; this.gauge = 0; } else { let rad = (this.deg * 0.9) * Math.PI / 180; this.can.vx = Math.cos(rad) * (this.pwr * 0.23); this.can.vy = -Math.sin(rad) * (this.pwr * 0.55); this.state = 'flying'; AudioSys.se('kick'); } } }
+        if(this.state === 'power' || this.state === 'angle') { this.gauge += this.c.GUAGE_SPEED * this.dir; if(this.gauge > 100 || this.gauge < 0) this.dir *= -1; }
+        else if(this.state.includes('_ok')) { if(--this.wait <= 0) { if(this.state === 'power_ok') { this.state = 'angle'; this.gauge = 0; } else { let r = (this.deg * 0.9) * Math.PI / 180; this.can.vx = Math.cos(r) * (this.pwr * this.c.PWR_X_MULT); this.can.vy = -Math.sin(r) * (this.pwr * this.c.PWR_Y_MULT); this.state = 'flying'; AudioSys.se('kick'); } } }
         else if(this.state === 'flying' && !this.can.dead) {
-            this.can.vy += 0.25; this.can.x += this.can.vx; this.can.y += this.can.vy; this.can.rot += 0.2;
-            if(this.can.x < 20 || this.can.x > 355) { this.can.vx *= -0.7; this.can.x = this.can.x < 20 ? 20 : 355; }
+            this.can.vy += this.c.GRAVITY; this.can.x += this.can.vx; this.can.y += this.can.vy; this.can.rot += 0.2;
+            if(this.can.x < 20 || this.can.x > 355) { this.can.vx *= -0.7; this.can.x = (this.can.x < 20) ? 20 : 355; }
             this.camY = Math.min(this.camY, this.can.y - 300); this.maxH = Math.max(this.maxH, Math.floor(550 - this.can.y));
-            if(this.can.vy > 0) { this.can.dead = true; AudioSys.se('exp'); GameEngine.spawnFirework(this.can.x, this.can.y); GameEngine.endGame(`たかさ: <span class='critical'>${this.maxH}m</span><br>たまや〜！うちゅうの大花火！`); }
+            if(this.can.vy > 0) { this.can.dead = true; AudioSys.se('exp'); GameEngine.spawnFirework(this.can.x, this.can.y); GameEngine.endGame(this.maxH); }
         }
         document.getElementById('ui-score').innerText = `たかさ: ${this.maxH}m`;
     }
     draw(ctx) {
         let sky = Math.min(1, this.maxH / 8000); ctx.fillStyle = `rgb(${Math.floor(135*(1-sky))},${Math.floor(206*(1-sky))},${Math.floor(235*(1-sky))})`; ctx.fillRect(0,0,375,667);
-        ctx.save(); ctx.translate(0, -this.camY); ctx.font = '30px Arial'; this.env.forEach(e => ctx.fillText(e.t, e.x, e.y)); ctx.fillStyle = '#2ecc71'; ctx.fillRect(-100, 580, 575, 500);
+        ctx.save(); ctx.translate(0, -this.camY); this.env.forEach(e => { ctx.font = '30px Arial'; ctx.fillText(e.t, e.x, e.y); });
+        ctx.fillStyle = '#2ecc71'; ctx.fillRect(-100, 580, 575, 500);
         if(!this.can.dead) { ctx.save(); ctx.translate(this.can.x, this.can.y); ctx.rotate(this.can.rot); ctx.font = '50px Arial'; ctx.fillText('🥫', -25, 25); ctx.restore(); }
         ctx.restore();
-        if(this.state.includes('power') || this.state.includes('angle')) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(40, 160, 295, 90); ctx.fillStyle = '#fff'; ctx.font = "bold 18px Arial"; ctx.fillText(this.state.includes('power') ? "パワー" : "かくど", 55, 190); ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.fillRect(50, 205, 275, 25); ctx.fillStyle = this.state.includes('_ok') ? "#fffa65" : "#00cec9"; ctx.fillRect(50, 205, (this.gauge/100)*275, 25); }
+        if(this.state.includes('power') || this.state.includes('angle')) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(40, 160, 295, 90); ctx.fillStyle = '#fff'; ctx.font = "bold 18px Arial"; ctx.fillText(this.state.includes('power')?"パワー":"かくど", 55, 190); ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.fillRect(50, 205, 275, 25); ctx.fillStyle = "#fffa65"; ctx.fillRect(50, 205, (this.gauge/100)*275, 25); }
     }
 }
 
 /** 2. ギリギリ糸とおし */
 class ItoGame {
-    constructor(canvas) { this.w = 375; this.h = 667; this.mode = 'ito'; this.help = "おして上昇！<br>しっぽを切らさずにすすもう！"; }
+    constructor() { this.c = CONFIG.ITO; this.help = CONFIG.ITO.HELP; }
     init() { this.y = 300; this.vy = 0; this.score = 0; this.walls = []; this.frame = 0; this.trail = []; this.isPress = false; this.dead = false; document.getElementById('ui-score').innerText = `スコア: 0`; }
     onPress() { this.isPress = true; AudioSys.se('hit'); }
     onRelease() { this.isPress = false; }
     update() {
-        if(this.dead) return; this.vy += this.isPress ? -0.8 : 0.45; this.vy *= 0.94; this.y += this.vy;
-        let speed = 4.2 + this.score * 0.16; let gap = Math.max(80, 190 - this.score * 4.5);
-        this.trail.unshift({x: 100, y: this.y}); if(this.trail.length > 50) this.trail.pop(); this.trail.forEach(p => p.x -= speed);
+        if(this.dead) return; this.vy += this.isPress ? this.c.JUMP_POWER : this.c.FALL_SPEED; this.vy *= 0.94; this.y += this.vy;
+        let s = this.c.BASE_SPEED + this.score * this.c.ACCEL; let g = Math.max(this.c.GAP_SIZE, 190 - this.score * 4.5);
+        this.trail.unshift({x: 100, y: this.y}); if(this.trail.length > 50) this.trail.pop(); this.trail.forEach(p => p.x -= s);
         GameEngine.spawn(100, this.y, "#fffa65", 1, 0.2);
-        if(this.frame++ % Math.max(35, 85-this.score) === 0) this.walls.push({ x: 375, y: Math.random()*(400)+50, g: gap, scored: false });
-        this.walls.forEach(w => { w.x -= speed; if (w.x < 107 && w.x > 53 && (this.y < w.y+7 || this.y > w.y+w.g-7)) { this.dead = true; AudioSys.se('exp'); GameEngine.spawn(100, this.y, "#fffa65", 20, 1.5); GameEngine.endGame(`スコア: <span class='critical'>${this.score}点</span><br>どんまい！`); } if(w.x < 80 && !w.scored && !this.dead) { w.scored = true; this.score++; } });
-        if(!this.dead && (this.y < 0 || this.y > 667)) { this.dead = true; AudioSys.se('hit'); GameEngine.endGame("はみ出たぞ！ｗ"); }
-        if(!this.dead) document.getElementById('ui-score').innerText = `スコア: ${this.score}`;
+        if(this.frame++ % Math.max(35, 85-this.score) === 0) this.walls.push({ x: 375, y: Math.random()*(400)+50, g: g, scored: false });
+        this.walls.forEach(w => {
+            w.x -= s;
+            if (w.x < 107 && w.x > 53 && (this.y < w.y+7 || this.y > w.y+w.g-7)) { this.dead = true; AudioSys.se('exp'); GameEngine.spawn(100, this.y, "#fffa65", 25, 1.5); GameEngine.endGame(this.score); }
+            if(w.x < 80 && !w.scored && !this.dead) { w.scored = true; this.score++; }
+        });
+        if(!this.dead && (this.y < 0 || this.y > 667)) { this.dead = true; AudioSys.se('hit'); GameEngine.endGame(this.score); }
+        document.getElementById('ui-score').innerText = `スコア: ${this.score}`;
     }
-    draw(ctx) {
-        ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0,0,375,667);
-        if(this.trail.length > 2) { ctx.strokeStyle = '#fffa65'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(this.trail[0].x, this.trail[0].y); for (let i = 1; i < this.trail.length - 2; i++) { const xc = (this.trail[i].x + this.trail[i + 1].x) / 2; const yc = (this.trail[i].y + this.trail[i + 1].y) / 2; ctx.quadraticCurveTo(this.trail[i].x, this.trail[i].y, xc, yc); } ctx.quadraticCurveTo(this.trail[this.trail.length - 2].x, this.trail[this.trail.length - 2].y, this.trail[this.trail.length - 1].x, this.trail[this.trail.length - 1].y); ctx.stroke(); }
-        if(!this.dead) { ctx.fillStyle = '#fffa65'; ctx.beginPath(); ctx.arc(100, this.y, 6, 0, Math.PI*2); ctx.fill(); }
-        this.walls.forEach(w => { ctx.fillStyle = '#ff4757'; ctx.fillRect(w.x, 0, 42, w.y); ctx.fillRect(w.x, w.y + w.g, 42, 667); });
+    draw(ctx) { 
+        ctx.fillStyle = '#e5e5e5'; ctx.fillRect(0,0,375,667); 
+        ctx.fillStyle = '#d2b48c'; ctx.fillRect(0, 450, 375, 217); 
+        ctx.strokeStyle = '#c1a47b'; ctx.lineWidth = 1; for(let i=0; i<10; i++) { ctx.beginPath(); ctx.moveTo(0, 460+i*20); ctx.lineTo(375, 460+i*20); ctx.stroke(); }
+        ctx.fillStyle = '#ff7f50'; ctx.fillRect(250, 500, 100, 60); ctx.fillStyle = '#fff'; ctx.font = '20px Arial'; ctx.fillText('🧵✂️', 265, 540); ctx.font = '24px Arial'; ctx.fillText('🔴', 50, 520); ctx.fillText('🔵', 150, 580);
+        if(this.trail.length > 2) {
+            ctx.strokeStyle = '#fffa65'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(this.trail[0].x, this.trail[0].y);
+            for (let i = 1; i < this.trail.length - 2; i++) { const xc = (this.trail[i].x + this.trail[i + 1].x) / 2; const yc = (this.trail[i].y + this.trail[i + 1].y) / 2; ctx.quadraticCurveTo(this.trail[i].x, this.trail[i].y, xc, yc); }
+            ctx.quadraticCurveTo(this.trail[this.trail.length - 2].x, this.trail[this.trail.length - 2].y, this.trail[this.trail.length - 1].x, this.trail[this.trail.length - 1].y); ctx.stroke();
+        }
+        if(!this.dead) { ctx.fillStyle = '#fffa65'; ctx.beginPath(); ctx.arc(100, this.y, 6, 0, Math.PI*2); ctx.fill(); } 
+        this.walls.forEach(w => { ctx.fillStyle = 'rgba(255, 71, 87, 0.8)'; ctx.fillRect(w.x, 0, 42, w.y); ctx.fillRect(w.x, w.y + w.g, 42, 667); }); 
     }
 }
 
 /** 3. かわまでチキンレース */
 class GiriGame {
-    constructor(canvas) { this.w = 375; this.h = 667; this.mode = 'giri'; this.help = "おしてダッシュ！はなしてブレーキ！"; }
-    init() { 
-        this.x = 40; this.y = 500; this.vx = 0; this.vy = 0; this.rot = 0; this.state = 'ready'; 
-        this.isSplashed = false; // ★音の重複防止フラグ
-        document.getElementById('ui-score').innerText = `スピード: 0`; 
-    }
+    constructor() { this.c = CONFIG.GIRI; this.help = CONFIG.GIRI.HELP; }
+    init() { this.x = 40; this.y = 500; this.vx = 0; this.vy = 0; this.rot = 0; this.state = 'ready'; this.isSplashed = false; document.getElementById('ui-score').innerText = `スピード: 0`; }
     onPress() { if(this.state==='ready') this.state='go'; }
     onRelease() { if(this.state==='go') this.state='brake'; }
     update() {
-        if(this.state==='go') { this.vx += 0.45; }
-        else if(this.state==='brake') { this.vx *= 0.88; if(this.vx < 0.2) { this.vx = 0; this.judge(); } }
-        this.x += this.vx; if(this.x > 330 && this.state !== 'falling') this.state = 'falling';
+        if(this.state==='go') { this.vx += this.c.DASH_POWER; }
+        else if(this.state==='brake') {
+            this.vx *= this.c.BRAKE_DRAG;
+            if(this.vx < 0.2) { 
+                this.vx = 0; this.state='stopped'; let dist = this.c.RIVER_POS - this.x; let score = Math.max(0, 100 - Math.floor(dist * 1.5));
+                if (score === 0) GameEngine.endGame(0, "ビビりすぎて草ｗ<br>安全第一だな！");
+                else GameEngine.endGame(score);
+            }
+        }
+        this.x += this.vx;
+        if(this.x > this.c.RIVER_POS && this.state !== 'falling' && this.state !== 'dead') this.state = 'falling';
         if(this.state === 'falling') {
             this.vy += 0.7; this.y += this.vy; this.rot += 0.15;
-            if(this.y > 580 && !this.isSplashed) { // ★修正：一度だけ音が鳴るように判定
-                this.isSplashed = true;
-                AudioSys.se('splash'); 
-                GameEngine.spawn(this.x, 620, "#3498db", 40, 1.2); 
-                GameEngine.endGame("<span class='critical'>0点！</span><br>ドボーン！！ｗ"); 
-                this.y = 1000; 
-            }
+            if(this.y > 580 && !this.isSplashed) { this.isSplashed = true; this.state='dead'; AudioSys.se('splash'); GameEngine.spawn(this.x, 620, "#3498db", 40, 1.2); GameEngine.endGame(0); this.y = 1000; }
         }
         document.getElementById('ui-score').innerText = `スピード: ${Math.floor(this.vx * 10)}`;
     }
-    judge() {
-        let dist = 330 - this.x; let point = Math.max(0, 100 - Math.floor(dist * 1.5));
-        let msg = point >= 90 ? "神！鋼の心臓だ！" : point >= 50 ? "まあまあだな。" : "ビビりすぎｗ";
-        GameEngine.endGame(`スコア: <span class='critical'>${point}点</span><br>${msg}`);
-    }
     draw(ctx) {
         ctx.fillStyle = '#87ceeb'; ctx.fillRect(0,0,375,667); ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(325, 80, 30, 0, Math.PI*2); ctx.fill(); 
-        ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.8; [ [80,120], [110,110], [140,120], [250,180], [280,170], [310,180] ].forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], 25, 0, Math.PI*2); ctx.fill(); }); ctx.globalAlpha = 1.0;
-        ctx.fillStyle = '#8b4513'; ctx.fillRect(0, 550, 330, 200); ctx.fillStyle = '#87ceeb'; ctx.fillRect(330, 550, 45, 70); ctx.fillStyle = '#1a5276'; ctx.fillRect(330, 620, 375, 200); 
+        ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.8; [ [80,120], [110,110], [140,120], [250,180] ].forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], 25, 0, Math.PI*2); ctx.fill(); }); ctx.globalAlpha = 1.0;
+        ctx.fillStyle = '#8b4513'; ctx.fillRect(0, 550, this.c.RIVER_POS, 200); ctx.fillStyle = '#87ceeb'; ctx.fillRect(this.c.RIVER_POS, 550, 45, 70); ctx.fillStyle = 'rgba(26, 82, 118, 0.7)'; ctx.fillRect(this.c.RIVER_POS, 620, 375, 200); 
         ctx.save(); ctx.translate(this.x, this.y + 45); ctx.scale(-1, 1); ctx.rotate(-this.rot); ctx.font = '60px Arial'; ctx.fillText(this.state === 'falling' ? '😱' : '🏃', -30, 0); ctx.restore();
     }
 }
