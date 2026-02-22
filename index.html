@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>バカゲーコレクション Ver1.01</title>
+    <title>バカゲーコレクション Ver1.02</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap');
         
@@ -13,14 +13,14 @@
             height: 100vh; font-family: 'M PLUS Rounded 1c', sans-serif; 
             overflow: hidden; 
             
-            /* タッチ最適化 */
+            /* 青枠や長押し選択をブロック */
             -webkit-user-select: none; user-select: none;
             -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
-            touch-action: none;
+            /* ★修正：Safariのタップ無効化バグを回避しつつ、ダブルタップズームを防止 */
+            touch-action: manipulation; 
         }
 
-        /* 大画面対応の自動拡大CSS */
         #smartphone-frame { 
             width: 100vw; 
             height: 100vh; 
@@ -37,6 +37,8 @@
             width: 100%;
             height: 100%;
             display: block;
+            /* ★修正：ゲームのキャンバス上だけはスワイプ操作を完全に無効化 */
+            touch-action: none;
         }
 
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; z-index: 10; opacity: 0; transition: opacity 0.3s; }
@@ -63,13 +65,12 @@
         @keyframes animeFade { 0% { opacity: 0; transform: scale(0.5); } 100% { opacity: 1; transform: scale(1); } }
         .critical { color: #ff4757; font-weight: 900; font-size: 1.6rem; }
         
-        /* バージョン表示用 */
         #version-tag { position: absolute; top: 10px; right: 15px; color: rgba(255,255,255,0.4); font-size: 0.8rem; font-weight: bold; z-index: 100; pointer-events: none; }
     </style>
 </head>
 <body>
 <div id="smartphone-frame">
-    <div id="version-tag">Ver1.01</div>
+    <div id="version-tag">Ver1.02</div>
 
     <button id="back-to-menu-btn" onclick="GameEngine.changeScreen('screen-menu')">🏠 メニュー</button>
 
@@ -77,7 +78,7 @@
         <h1 style="font-size: 2.2rem; color: #fff; margin-top:150px; text-align:center;">バカゲー<br><span style="color:#fffa65">だいしゅうごう</span></h1>
         <div style="font-size: 5rem; margin: 20px 0;">🤪</div>
         <p style="color:white; opacity: 0.6; font-size: 1.1rem; animation: pulse 1s infinite alternate;">画面をタッチ！</p>
-        <div style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer;" onclick="GameEngine.changeScreen('screen-menu')"></div>
+        <div style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:pointer; z-index: 10;" onclick="GameEngine.changeScreen('screen-menu')"></div>
     </div>
 
     <div id="screen-menu" class="screen bg-gradient">
@@ -139,10 +140,4 @@ const AudioSys = {
         const notes = [261.63, 329.63, 392.00, 329.63]; let idx = 0;
         if(this.bgmInterval) clearInterval(this.bgmInterval);
         this.bgmInterval = setInterval(() => {
-            if(this.ctx.state === 'running' && document.getElementById('screen-game').style.display !== 'none') {
-                this.playTone(notes[idx]/2, 'triangle', 0.2, 0.05); idx = (idx + 1) % notes.length;
-            }
-        }, 400);
-    },
-    se: function(name) {
-        if(!this.ctx || this.ctx.state !== 'running
+            if(this.ctx.state === 'running' && document.getElementById('screen
