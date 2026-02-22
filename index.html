@@ -13,19 +13,32 @@
             height: 100vh; font-family: 'M PLUS Rounded 1c', sans-serif; 
             overflow: hidden; 
             
-            /* ★追加：文字選択や長押しメニュー、タップ時の青い枠を完全に無効化 */
+            /* 【タッチ最適化】文字選択、長押し、青枠を完全ブロック */
             -webkit-user-select: none; user-select: none;
             -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
             touch-action: none;
         }
 
-        /* レイアウトを一番調子が良かった「375x667の固定比率」に戻しました */
+        /* 【大画面対応】プログラムはいじらず、CSSの計算式だけでどんな画面でも最大化＆アスペクト比維持！ */
         #smartphone-frame { 
-            width: 100%; max-width: 375px; 
-            height: 100%; max-height: 667px; 
-            background: #1a1a1a; position: relative; overflow: hidden; 
-            border-radius: 30px; border: 4px solid #333;
+            width: 100vw; 
+            height: 100vh; 
+            /* 横長画面（iPadやPC）では縦幅を基準に横幅を制限 */
+            max-width: calc(100vh * (375 / 667));
+            /* 縦長画面（スマホ）では横幅を基準に縦幅を制限 */
+            max-height: calc(100vw * (667 / 375));
+            background: #1a1a1a; 
+            position: relative; 
+            overflow: hidden;
+            margin: auto;
+        }
+
+        /* キャンバスは枠に100%合わせるだけ。内部解像度は常に375x667なのでバグりません */
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
         }
 
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; z-index: 10; opacity: 0; transition: opacity 0.3s; }
@@ -102,8 +115,7 @@
 
 <script>
 /**
- * ★追加：レトロ音源エンジン（Web Audio API）
- * 画像や外部ファイルなしで「ピコピコ音」を作ります
+ * 【レトロBGM・効果音システム】
  */
 const AudioSys = {
     ctx: null, bgmInterval: null,
@@ -111,12 +123,25 @@ const AudioSys = {
         if(this.ctx) return;
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AudioContext();
-        this.playBGM(); // 初回タッチ時にBGM再生スタート
+        this.playBGM();
     },
-    // 音を鳴らす基本関数
     playTone: function(freq, type, dur, vol) {
-        if(!this.ctx) return;
+        if(!this.ctx || this.ctx.state !== 'running') return;
         let osc = this.ctx.createOscillator();
         let gain = this.ctx.createGain();
         osc.type = type; 
-        osc.frequency.setValueAt
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        osc.connect(gain); 
+        gain.connect(this.ctx.destination);
+        osc.start(); 
+        osc.stop(this.ctx.currentTime + dur);
+        return osc;
+    },
+    playBGM: function() {
+        const notes = [261.63, 329.63, 392.00, 329.63]; 
+        let idx = 0;
+        if(this.bgmInterval) clearInterval(this.bgmInterval);
+        this.bgmInterval = setInterval(() => {
+            if(this.ctx.state === 'running' && document.getElementById('screen-game').style.display
